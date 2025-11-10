@@ -269,7 +269,8 @@ export default function Dashboard() {
 
     <>
       <Navbar />
-      <main className="p-6 max-w-6xl mx-auto">
+      <div className="p-6">
+      <main className="p-4 sm:p-6 max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-blue-700">รายการจองรถ</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -298,7 +299,7 @@ export default function Dashboard() {
                 className={`px-4 py-2 text-sm sm:text-base font-semibold text-white ${isToday(new Date(date)) ? "bg-green-600" : "bg-gray-600"
                   }`}
               >
-                {format(new Date(date), "dd-MM-yyyy", { locale: th })}{" "}
+                {format(new Date(date), "dd MMMM yyyy", { locale: th })}{" "}
                 {isToday(new Date(date)) && "(วันนี้)"}
               </div>
 
@@ -459,6 +460,7 @@ export default function Dashboard() {
             )}
           </DialogContent>
         </Dialog>
+      
         <Dialog open={!!editBooking} onOpenChange={() => setEditBooking(null)}>
           <DialogContent className="w-[95vw] sm:max-w-md">
             <DialogHeader>
@@ -612,6 +614,7 @@ export default function Dashboard() {
         </Dialog>
 
       </main>
+      </div>
     </>
   )
 }
