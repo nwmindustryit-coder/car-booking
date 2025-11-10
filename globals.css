@@ -1,0 +1,13 @@
+html, body {
+  scroll-behavior: smooth;
+}
+
+table {
+  min-width: 700px;
+}
+
+@media (max-width: 768px) {
+  table {
+    min-width: unset;
+  }
+}
