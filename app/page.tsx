@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [editBooking, setEditBooking] = useState<any | null>(null)
   const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([])
   const [editBookingStatus, setEditBookingStatus] = useState<Record<string, string>>({})
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([])
   const [editForm, setEditForm] = useState({
     driver_name: '',
     destination: '',
@@ -157,12 +158,33 @@ export default function Dashboard() {
   }, [])
 
   const loadBookings = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
       .select('*, cars(plate)')
       .order('date', { ascending: false })
-    setBookings(data || [])
+    if (error) console.error(error)
+    else {
+      setBookings(data)
+      setFilteredBookings(data) // ✅ สำคัญ
+    }
   }
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredBookings(bookings)
+      return
+    }
+
+    const term = search.toLowerCase()
+    const filtered = bookings.filter((b) =>
+    (b.user_name?.toLowerCase().includes(term) ||
+      b.driver_name?.toLowerCase().includes(term) ||
+      b.cars?.plate?.toLowerCase().includes(term))
+    )
+
+    setFilteredBookings(filtered)
+  }, [search, bookings])
+
 
   // ✅ ตรวจสอบช่วงเวลาว่างเมื่อเปิด Dialog แก้ไข
   useEffect(() => {
@@ -270,350 +292,350 @@ export default function Dashboard() {
     <>
       <Navbar />
       <div className="p-6">
-      <main className="p-4 sm:p-6 max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-blue-700">รายการจองรถ</h1>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Input
-              placeholder="🔍 ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full md:w-72"
-            />
-            <Button onClick={() => location.href = '/booking'}>+ จองรถ</Button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          {Object.entries(
-            bookings.reduce((groups, booking) => {
-              const date = booking.date
-              if (!groups[date]) groups[date] = []
-              groups[date].push(booking)
-              return groups
-            }, {} as Record<string, any[]>)
-          ).map(([date, group]: [string, any[]]) => (
-            <div key={date} className="border-b last:border-none">
-              {/* ✅ ส่วนหัวของแต่ละวัน */}
-              <div
-                className={`px-4 py-2 text-sm sm:text-base font-semibold text-white ${isToday(new Date(date)) ? "bg-green-600" : "bg-gray-600"
-                  }`}
-              >
-                {format(new Date(date), "dd MMMM yyyy", { locale: th })}{" "}
-                {isToday(new Date(date)) && "(วันนี้)"}
-              </div>
-
-              {/* ✅ ตารางข้อมูลของวันนั้น */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                  <thead className="bg-blue-100 text-blue-800">
-                    <tr>
-                      <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th>
-                      <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
-                      <th className="p-2 sm:p-3">ทะเบียนรถ</th>
-                      <th className="p-2 sm:p-3">วันที่</th>
-                      <th className="p-2 sm:p-3">ช่วงเวลา</th>
-                      <th className="p-2 sm:p-3">สถานที่</th>
-                      <th className="p-2 sm:p-3">เหตุผล</th>
-                      <th className="p-2 sm:p-3 text-center">จัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.map((b: any) => (
-                      <tr key={b.id} className="border-b hover:bg-blue-50">
-                        <td className="p-2 sm:p-3">{b.user_name}</td>
-                        <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
-                        <td className="p-2 sm:p-3 text-center">
-                          <Badge>{b.cars?.plate}</Badge>
-                        </td>
-                        <td className="p-2 sm:p-3 text-center">{b.date}</td>
-                        <td className="p-2 sm:p-3 text-center">{mergeTimeSlots(b.time_slot)}</td>
-                        <td className="p-2 sm:p-3">{b.destination}</td>
-                        <td className="p-2 sm:p-3">{b.reason}</td>
-                        <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
-                          <Button size="sm" variant="outline" onClick={async () => {
-                            const { data: milesData, error } = await supabase
-                              .from("miles")
-                              .select("start_mile, end_mile, total_mile")
-                              .eq("booking_id", b.id)
-                              .limit(1)
-                              .maybeSingle()
-
-                            if (error) console.error("Error loading miles:", error)
-                            setShowDetail({ ...b, miles: milesData || null })
-                          }}>
-                            <EyeIcon className="w-4 h-4 mr-1" /> ดู
-                          </Button>
-
-                          <Button size="sm" variant="outline" onClick={() => setSelectedBooking(b)}>
-                            <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
-                          </Button>
-
-                          {b.user_id === user.id && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  setEditForm({
-                                    driver_name: b.driver_name,
-                                    destination: b.destination,
-                                    reason: b.reason,
-                                    date: new Date(b.date),
-                                  })
-                                  setSelectedEditTimes(b.time_slot.split(",").map((s) => s.trim()))
-                                  setEditBooking(b)
-                                }}
-                              >
-                                ✏️
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteBooking(b.id)}
-                              >
-                                🗑️
-                              </Button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        <main className="p-4 sm:p-6 max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-blue-700">รายการจองรถ</h1>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Input
+                placeholder="🔍 ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full md:w-72"
+              />
+              <Button onClick={() => location.href = '/booking'}>+ จองรถ</Button>
             </div>
-          ))}
-        </div>
+          </div>
 
-
-        {/* ✅ Dialog แสดงรายละเอียด */}
-        <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-          <DialogContent className="w-[95vw] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>รายละเอียดการจอง</DialogTitle>
-            </DialogHeader>
-            {showDetail && (
-              <div className="space-y-2 text-sm">
-                <p><b>อีเมลผู้จอง:</b> {showDetail.user_name}</p>
-                <p><b>ชื่อผู้ขับ:</b> {showDetail.driver_name}</p>
-                <p><b>ทะเบียนรถ:</b> {showDetail.cars?.plate}</p>
-                <p><b>วันที่:</b> {showDetail.date}</p>
-                <p><b>ช่วงเวลา:</b> {showDetail.time_slot}</p>
-                <p><b>สถานที่:</b> {showDetail.destination}</p>
-                <p><b>เหตุผล:</b> {showDetail.reason}</p>
-
-                {/* ✅ แสดงเลขไมล์ถ้ามี */}
-                {showDetail.miles ? (
-                  <div className="pt-2 border-t mt-2">
-                    <p><b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}</p>
-                    <p><b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}</p>
-                    <p className="text-blue-700 font-semibold">
-                      🚗 ใช้ไปทั้งหมด {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="italic text-gray-400 pt-2 border-t mt-2">
-                    ยังไม่ได้บันทึกเลขไมล์
-                  </p>
-                )}
-              </div>
-            )}
-
-
-          </DialogContent>
-        </Dialog>
-
-        {/* ✅ Dialog กรอกเลขไมล์ */}
-        <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-          <DialogContent className="w-[95vw] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>บันทึกเลขไมล์</DialogTitle>
-            </DialogHeader>
-            {selectedBooking && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  รถทะเบียน <b>{selectedBooking.cars?.plate}</b> <br />
-                  ผู้ขับ: <b>{selectedBooking.driver_name}</b>
-                </p>
-                <Input
-                  type="number"
-                  placeholder="เลขไมล์เริ่มต้น"
-                  value={startMile}
-                  onChange={(e) => setStartMile(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="เลขไมล์สิ้นสุด"
-                  value={endMile}
-                  onChange={(e) => setEndMile(e.target.value)}
-                />
-                {usedMile !== null && (
-                  <p className="text-center text-sm text-blue-700">
-                    รวมระยะทางที่ใช้: <b>{usedMile}</b> กม.
-                  </p>
-                )}
-                <Button className="w-full" onClick={handleSaveMiles}>
-                  💾 บันทึกเลขไมล์
-                </Button>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      
-        <Dialog open={!!editBooking} onOpenChange={() => setEditBooking(null)}>
-          <DialogContent className="w-[95vw] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>แก้ไขการจอง</DialogTitle>
-            </DialogHeader>
-
-            {editBooking && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault()
-
-                  // ✅ รวมช่วงเวลาที่เลือกไว้เป็น string เดียว
-                  const newTimeSlots = TIME_SLOTS
-                    .filter(slot => selectedEditTimes.includes(slot))
-                    .join(', ')
-
-                  // ✅ ตรวจสอบว่ามีการเลือกเวลาหรือยัง
-                  if (!newTimeSlots) {
-                    alert('กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง')
-                    return
-                  }
-
-                  // ✅ ตรวจสอบเวลาที่ซ้ำกับคนอื่น (แต่ไม่นับรายการตัวเอง)
-                  const { data: checkData, error: checkError } = await supabase
-                    .from('bookings')
-                    .select('id, time_slot')
-                    .eq('car_id', editBooking.car_id)
-                    .eq('date', editForm.date.toISOString().split('T')[0])
-
-                  if (checkError) {
-                    console.error('Error checking bookings:', checkError)
-                    alert('ไม่สามารถตรวจสอบเวลาว่างได้')
-                    return
-                  }
-
-                  // ✅ ตรวจสอบว่าช่วงเวลาที่เลือกไปซ้ำกับของคนอื่นไหม
-                  const conflict = checkData?.some(b => {
-                    if (b.id === editBooking.id) return false // ข้ามของตัวเอง
-                    const booked = b.time_slot.split(',').map(s => s.trim())
-                    return booked.some(slot => selectedEditTimes.includes(slot))
-                  })
-
-                  if (conflict) {
-                    alert('บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่')
-                    return
-                  }
-
-                  // ✅ อัปเดตข้อมูล
-                  const { error } = await supabase
-                    .from('bookings')
-                    .update({
-                      driver_name: editForm.driver_name,
-                      destination: editForm.destination,
-                      reason: editForm.reason,
-                      time_slot: newTimeSlots,
-                      date: editForm.date.toLocaleDateString('sv-SE'), // ✅ ใช้ format มาตรฐาน YYYY-MM-DD
-                    })
-                    .eq('id', editBooking.id)
-                    .eq('user_id', user.id) // ป้องกันไม่ให้แก้ของคนอื่น
-
-                  if (error) {
-                    console.error('Update error:', error)
-                    alert(error.message)
-                  } else {
-                    alert('อัปเดตข้อมูลเรียบร้อย ✅')
-                    setEditBooking(null)
-                    loadBookings()
-                  }
-                }}
-                className="space-y-3"
-              >
-
-                <label className="block text-sm font-medium">ชื่อผู้ขับ</label>
-                <Input
-                  value={editForm.driver_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, driver_name: e.target.value })
-                  }
-                />
-
-                <label className="block text-sm font-medium">สถานที่</label>
-                <Input
-                  value={editForm.destination}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, destination: e.target.value })
-                  }
-                />
-
-                <label className="block text-sm font-medium">เหตุผล</label>
-                <Input
-                  value={editForm.reason}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, reason: e.target.value })
-                  }
-                />
-
-                {/* ✅ ส่วนเลือกช่วงเวลาใหม่ */}
-                {/* ✅ ส่วนเลือกวันที่ใหม่ */}
-                <label className="block text-sm font-medium">วันที่</label>
-                <DatePicker
-                  selected={editForm.date}
-                  onChange={(d: Date | null) => {
-                    if (d) setEditForm({ ...editForm, date: d })
-                  }}
-                  dateFormat="dd/MM/yyyy"
-                  className="border rounded-md p-2 w-full"
-                />
-
-                <label className="block text-sm font-medium">ช่วงเวลาที่ต้องการแก้ไข</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {TIME_SLOTS.map((slot) => {
-                    const isBooked = editBookingStatus[slot] && editBookingStatus[slot] !== 'ว่าง'
-                    const bookedBy = editBookingStatus[slot]
-                    const isSelected = selectedEditTimes.includes(slot)
-
-                    return (
-                      <Button
-                        key={slot}
-                        type="button"
-                        variant={isSelected ? "default" : "outline"}
-                        onClick={() => {
-                          if (!isBooked || bookedBy === editForm.driver_name) {
-                            setSelectedEditTimes((prev) =>
-                              prev.includes(slot)
-                                ? prev.filter((s) => s !== slot)
-                                : [...prev, slot]
-                            )
-                          }
-                        }}
-                        disabled={isBooked && bookedBy !== editForm.driver_name}
-                        className="flex items-center justify-center gap-1"
-                      >
-                        {slot}
-                        {isBooked ? (
-                          <Badge className="ml-1 bg-red-500">{bookedBy}</Badge>
-                        ) : (
-                          <Badge className="ml-1 bg-green-500">ว่าง</Badge>
-                        )}
-                      </Button>
-                    )
-                  })}
+          <div className="bg-white rounded-xl shadow overflow-hidden">
+            {Object.entries(
+              filteredBookings.reduce((groups, booking) => {
+                const date = booking.date
+                if (!groups[date]) groups[date] = []
+                groups[date].push(booking)
+                return groups
+              }, {} as Record<string, any[]>)
+            ).map(([date, group]: [string, any[]]) => (
+              <div key={date} className="border-b last:border-none">
+                {/* ✅ ส่วนหัวของแต่ละวัน */}
+                <div
+                  className={`px-4 py-2 text-sm sm:text-base font-semibold text-white ${isToday(new Date(date)) ? "bg-green-600" : "bg-gray-600"
+                    }`}
+                >
+                  {format(new Date(date), "dd MMMM yyyy", { locale: th })}{" "}
+                  {isToday(new Date(date)) && "(วันนี้)"}
                 </div>
 
-                <Button type="submit" className="w-full bg-blue-600 text-white">
-                  💾 บันทึกการแก้ไข
-                </Button>
-              </form>
+                {/* ✅ ตารางข้อมูลของวันนั้น */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm min-w-[700px]">
+                    <thead className="bg-blue-100 text-blue-800">
+                      <tr>
+                        <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th>
+                        <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
+                        <th className="p-2 sm:p-3">ทะเบียนรถ</th>
+                        <th className="p-2 sm:p-3">วันที่</th>
+                        <th className="p-2 sm:p-3">ช่วงเวลา</th>
+                        <th className="p-2 sm:p-3">สถานที่</th>
+                        <th className="p-2 sm:p-3">เหตุผล</th>
+                        <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.map((b: any) => (
+                        <tr key={b.id} className="border-b hover:bg-blue-50">
+                          <td className="p-2 sm:p-3">{b.user_name}</td>
+                          <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
+                          <td className="p-2 sm:p-3 text-center">
+                            <Badge>{b.cars?.plate}</Badge>
+                          </td>
+                          <td className="p-2 sm:p-3 text-center">{b.date}</td>
+                          <td className="p-2 sm:p-3 text-center">{mergeTimeSlots(b.time_slot)}</td>
+                          <td className="p-2 sm:p-3">{b.destination}</td>
+                          <td className="p-2 sm:p-3">{b.reason}</td>
+                          <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const { data: milesData, error } = await supabase
+                                .from("miles")
+                                .select("start_mile, end_mile, total_mile")
+                                .eq("booking_id", b.id)
+                                .limit(1)
+                                .maybeSingle()
 
-            )}
-          </DialogContent>
-        </Dialog>
+                              if (error) console.error("Error loading miles:", error)
+                              setShowDetail({ ...b, miles: milesData || null })
+                            }}>
+                              <EyeIcon className="w-4 h-4 mr-1" /> ดู
+                            </Button>
 
-      </main>
+                            <Button size="sm" variant="outline" onClick={() => setSelectedBooking(b)}>
+                              <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
+                            </Button>
+
+                            {b.user_id === user.id && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setEditForm({
+                                      driver_name: b.driver_name,
+                                      destination: b.destination,
+                                      reason: b.reason,
+                                      date: new Date(b.date),
+                                    })
+                                    setSelectedEditTimes(b.time_slot.split(",").map((s) => s.trim()))
+                                    setEditBooking(b)
+                                  }}
+                                >
+                                  ✏️
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteBooking(b.id)}
+                                >
+                                  🗑️
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+
+
+          {/* ✅ Dialog แสดงรายละเอียด */}
+          <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
+            <DialogContent className="w-[95vw] sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>รายละเอียดการจอง</DialogTitle>
+              </DialogHeader>
+              {showDetail && (
+                <div className="space-y-2 text-sm">
+                  <p><b>อีเมลผู้จอง:</b> {showDetail.user_name}</p>
+                  <p><b>ชื่อผู้ขับ:</b> {showDetail.driver_name}</p>
+                  <p><b>ทะเบียนรถ:</b> {showDetail.cars?.plate}</p>
+                  <p><b>วันที่:</b> {showDetail.date}</p>
+                  <p><b>ช่วงเวลา:</b> {showDetail.time_slot}</p>
+                  <p><b>สถานที่:</b> {showDetail.destination}</p>
+                  <p><b>เหตุผล:</b> {showDetail.reason}</p>
+
+                  {/* ✅ แสดงเลขไมล์ถ้ามี */}
+                  {showDetail.miles ? (
+                    <div className="pt-2 border-t mt-2">
+                      <p><b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}</p>
+                      <p><b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}</p>
+                      <p className="text-blue-700 font-semibold">
+                        🚗 ใช้ไปทั้งหมด {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="italic text-gray-400 pt-2 border-t mt-2">
+                      ยังไม่ได้บันทึกเลขไมล์
+                    </p>
+                  )}
+                </div>
+              )}
+
+
+            </DialogContent>
+          </Dialog>
+
+          {/* ✅ Dialog กรอกเลขไมล์ */}
+          <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
+            <DialogContent className="w-[95vw] sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>บันทึกเลขไมล์</DialogTitle>
+              </DialogHeader>
+              {selectedBooking && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    รถทะเบียน <b>{selectedBooking.cars?.plate}</b> <br />
+                    ผู้ขับ: <b>{selectedBooking.driver_name}</b>
+                  </p>
+                  <Input
+                    type="number"
+                    placeholder="เลขไมล์เริ่มต้น"
+                    value={startMile}
+                    onChange={(e) => setStartMile(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="เลขไมล์สิ้นสุด"
+                    value={endMile}
+                    onChange={(e) => setEndMile(e.target.value)}
+                  />
+                  {usedMile !== null && (
+                    <p className="text-center text-sm text-blue-700">
+                      รวมระยะทางที่ใช้: <b>{usedMile}</b> กม.
+                    </p>
+                  )}
+                  <Button className="w-full" onClick={handleSaveMiles}>
+                    💾 บันทึกเลขไมล์
+                  </Button>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!editBooking} onOpenChange={() => setEditBooking(null)}>
+            <DialogContent className="w-[95vw] sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>แก้ไขการจอง</DialogTitle>
+              </DialogHeader>
+
+              {editBooking && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+
+                    // ✅ รวมช่วงเวลาที่เลือกไว้เป็น string เดียว
+                    const newTimeSlots = TIME_SLOTS
+                      .filter(slot => selectedEditTimes.includes(slot))
+                      .join(', ')
+
+                    // ✅ ตรวจสอบว่ามีการเลือกเวลาหรือยัง
+                    if (!newTimeSlots) {
+                      alert('กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง')
+                      return
+                    }
+
+                    // ✅ ตรวจสอบเวลาที่ซ้ำกับคนอื่น (แต่ไม่นับรายการตัวเอง)
+                    const { data: checkData, error: checkError } = await supabase
+                      .from('bookings')
+                      .select('id, time_slot')
+                      .eq('car_id', editBooking.car_id)
+                      .eq('date', editForm.date.toISOString().split('T')[0])
+
+                    if (checkError) {
+                      console.error('Error checking bookings:', checkError)
+                      alert('ไม่สามารถตรวจสอบเวลาว่างได้')
+                      return
+                    }
+
+                    // ✅ ตรวจสอบว่าช่วงเวลาที่เลือกไปซ้ำกับของคนอื่นไหม
+                    const conflict = checkData?.some(b => {
+                      if (b.id === editBooking.id) return false // ข้ามของตัวเอง
+                      const booked = b.time_slot.split(',').map(s => s.trim())
+                      return booked.some(slot => selectedEditTimes.includes(slot))
+                    })
+
+                    if (conflict) {
+                      alert('บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่')
+                      return
+                    }
+
+                    // ✅ อัปเดตข้อมูล
+                    const { error } = await supabase
+                      .from('bookings')
+                      .update({
+                        driver_name: editForm.driver_name,
+                        destination: editForm.destination,
+                        reason: editForm.reason,
+                        time_slot: newTimeSlots,
+                        date: editForm.date.toLocaleDateString('sv-SE'), // ✅ ใช้ format มาตรฐาน YYYY-MM-DD
+                      })
+                      .eq('id', editBooking.id)
+                      .eq('user_id', user.id) // ป้องกันไม่ให้แก้ของคนอื่น
+
+                    if (error) {
+                      console.error('Update error:', error)
+                      alert(error.message)
+                    } else {
+                      alert('อัปเดตข้อมูลเรียบร้อย ✅')
+                      setEditBooking(null)
+                      loadBookings()
+                    }
+                  }}
+                  className="space-y-3"
+                >
+
+                  <label className="block text-sm font-medium">ชื่อผู้ขับ</label>
+                  <Input
+                    value={editForm.driver_name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, driver_name: e.target.value })
+                    }
+                  />
+
+                  <label className="block text-sm font-medium">สถานที่</label>
+                  <Input
+                    value={editForm.destination}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, destination: e.target.value })
+                    }
+                  />
+
+                  <label className="block text-sm font-medium">เหตุผล</label>
+                  <Input
+                    value={editForm.reason}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, reason: e.target.value })
+                    }
+                  />
+
+                  {/* ✅ ส่วนเลือกช่วงเวลาใหม่ */}
+                  {/* ✅ ส่วนเลือกวันที่ใหม่ */}
+                  <label className="block text-sm font-medium">วันที่</label>
+                  <DatePicker
+                    selected={editForm.date}
+                    onChange={(d: Date | null) => {
+                      if (d) setEditForm({ ...editForm, date: d })
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    className="border rounded-md p-2 w-full"
+                  />
+
+                  <label className="block text-sm font-medium">ช่วงเวลาที่ต้องการแก้ไข</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TIME_SLOTS.map((slot) => {
+                      const isBooked = editBookingStatus[slot] && editBookingStatus[slot] !== 'ว่าง'
+                      const bookedBy = editBookingStatus[slot]
+                      const isSelected = selectedEditTimes.includes(slot)
+
+                      return (
+                        <Button
+                          key={slot}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          onClick={() => {
+                            if (!isBooked || bookedBy === editForm.driver_name) {
+                              setSelectedEditTimes((prev) =>
+                                prev.includes(slot)
+                                  ? prev.filter((s) => s !== slot)
+                                  : [...prev, slot]
+                              )
+                            }
+                          }}
+                          disabled={isBooked && bookedBy !== editForm.driver_name}
+                          className="flex items-center justify-center gap-1"
+                        >
+                          {slot}
+                          {isBooked ? (
+                            <Badge className="ml-1 bg-red-500">{bookedBy}</Badge>
+                          ) : (
+                            <Badge className="ml-1 bg-green-500">ว่าง</Badge>
+                          )}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <Button type="submit" className="w-full bg-blue-600 text-white">
+                    💾 บันทึกการแก้ไข
+                  </Button>
+                </form>
+
+              )}
+            </DialogContent>
+          </Dialog>
+
+        </main>
       </div>
     </>
   )
