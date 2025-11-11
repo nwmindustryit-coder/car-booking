@@ -18,6 +18,9 @@ export default function AdminUsers() {
     const [editRole, setEditRole] = useState('user')
     const [loading, setLoading] = useState(false)
     const [editPassword, setEditPassword] = useState('')
+    const [department, setDepartment] = useState('')
+    const [editDepartment, setEditDepartment] = useState('')
+
 
     // ✅ โหลดผู้ใช้ทั้งหมด
     const loadUsers = async () => {
@@ -37,7 +40,7 @@ export default function AdminUsers() {
         const res = await fetch('/api/admin/create-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, role }),
+            body: JSON.stringify({ email, password, role, department }),
         })
         const data = await res.json()
         setLoading(false)
@@ -65,6 +68,7 @@ export default function AdminUsers() {
         setSelectedUser(user)
         setEditEmail(user.email)
         setEditRole(user.role)
+        setEditDepartment(user.department || '')
     }
 
     // ✅ บันทึกการแก้ไข (รวมเปลี่ยนรหัสผ่าน)
@@ -77,6 +81,7 @@ export default function AdminUsers() {
                 id: selectedUser.id,
                 email: editEmail,
                 role: editRole,
+                department: editDepartment,
                 password: editPassword || undefined,
             }),
         })
@@ -104,6 +109,7 @@ export default function AdminUsers() {
                         <form onSubmit={addUser} className="space-y-3">
                             <Input placeholder="อีเมล" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <Input placeholder="รหัสผ่าน" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                            <Input placeholder="แผนก" value={department} onChange={(e) => setDepartment(e.target.value)} />
                             <select
                                 className="border p-2 w-full rounded-md"
                                 value={role}
@@ -128,6 +134,7 @@ export default function AdminUsers() {
                                 <thead className="bg-blue-100 text-blue-800">
                                     <tr>
                                         <th className="p-3 text-left">อีเมล</th>
+                                        <th className="p-3 text-left">แผนก</th>
                                         <th className="p-3 text-center">สิทธิ์</th>
                                         <th className="p-3 text-center">จัดการ</th>
                                     </tr>
@@ -136,6 +143,7 @@ export default function AdminUsers() {
                                     {users.map((u) => (
                                         <tr key={u.id} className="border-b hover:bg-blue-50">
                                             <td className="p-3">{u.email}</td>
+                                            <td className="p-3">{u.department || '-'}</td>
                                             <td className="p-3 text-center">
                                                 {u.role === 'admin'
                                                     ? <span className="text-red-600 font-medium">ผู้ดูแลระบบ</span>
@@ -152,6 +160,7 @@ export default function AdminUsers() {
                                         </tr>
                                     ))}
                                 </tbody>
+
                             </table>
                         </div>
                     </CardContent>
@@ -169,6 +178,11 @@ export default function AdminUsers() {
                                     placeholder="อีเมล"
                                     value={editEmail}
                                     onChange={(e) => setEditEmail(e.target.value)}
+                                />
+                                <Input
+                                    placeholder="แผนก"
+                                    value={editDepartment}
+                                    onChange={(e) => setEditDepartment(e.target.value)}
                                 />
                                 <select
                                     className="border p-2 w-full rounded-md"

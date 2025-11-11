@@ -239,7 +239,7 @@ export default function BookingPage() {
                     </CardContent>
                 </Card>
                 {/* ✅ Debug: แสดง timezone ทั้งฝั่งเครื่องและเซิร์ฟเวอร์ */}
-                <div className="mt-8 p-4 bg-gray-50 border rounded-lg text-sm text-gray-700 space-y-1">
+                {/* <div className="mt-8 p-4 bg-gray-50 border rounded-lg text-sm text-gray-700 space-y-1">
                     <p><b>🕒 Timezone Debug</b></p>
                     <p>🌍 <b>เวลาปัจจุบัน (เครื่องผู้ใช้):</b> {new Date().toLocaleString()}</p>
                     <p>🧭 <b>Time Zone (เครื่องผู้ใช้):</b> {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
@@ -254,7 +254,7 @@ export default function BookingPage() {
                     ) : (
                         <p className="italic text-gray-400">กำลังโหลดเวลาจากเซิร์ฟเวอร์...</p>
                     )}
-                </div>
+                </div> */}
 
 
             </main>

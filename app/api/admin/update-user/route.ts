@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { id, email, password, role } = await req.json()
+    const { id, email, password, role, department } = await req.json()
 
     // ✅ อัปเดตใน auth.users (รหัสผ่าน + email)
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // ✅ อัปเดตในตาราง profiles
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({ email, role })
+      .update({ email, role, department })
       .eq('id', id)
 
     if (profileError) throw profileError

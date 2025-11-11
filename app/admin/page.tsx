@@ -36,6 +36,14 @@ export default function AdminPage() {
               <Link href="/admin/users" className="text-blue-600 hover:underline">จัดการผู้ใช้</Link>
             </CardContent>
           </Card>
+          <Card className="hover:shadow-lg transition">
+            <CardHeader>
+              <CardTitle>📝 รายงาน</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/reports" className="text-blue-600 hover:underline">ออกรายงาน</Link>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </>

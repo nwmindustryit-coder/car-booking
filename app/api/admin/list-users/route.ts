@@ -15,7 +15,8 @@ export async function GET() {
     // ✅ ดึงข้อมูล role จากตาราง profiles
     const { data: profiles, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, role')
+      .select('id, email, role, department')
+
 
     if (profileError) throw profileError
 
@@ -26,6 +27,7 @@ export async function GET() {
         id: u.id,
         email: u.email,
         role: profile?.role || u.user_metadata?.role || 'user',
+        department: profile?.department || '',
       }
     })
 
