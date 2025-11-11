@@ -15,6 +15,7 @@ type Row = {
   date: string        // YYYY-MM-DD
   total_mile: number  // จากตาราง miles
   department: string
+  time_slot?: string
 }
 
 type AggRow = {
@@ -34,6 +35,28 @@ export default function ReportsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
+
+  // แปลงช่วงเวลา "HH:mm-HH:mm" เป็นจำนวนนาที
+  function timeSlotToMinutes(slot: string): number {
+    const [start, end] = slot.split('-').map(s => s.trim())
+    if (!start || !end) return 0
+    const [h1, m1] = start.split(':').map(Number)
+    const [h2, m2] = end.split(':').map(Number)
+    return (h2 * 60 + m2) - (h1 * 60 + m1)
+  }
+
+  // แปลงจำนวนนาทีรวมทั้งหมด → เป็นข้อความ "x วัน y ชม. z นาที"
+  function formatMinutesToReadable(totalMinutes: number): string {
+    const days = Math.floor(totalMinutes / (60 * 24))
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+    const minutes = totalMinutes % 60
+    const parts = []
+    if (days > 0) parts.push(`${days} วัน`)
+    if (hours > 0) parts.push(`${hours} ชม.`)
+    if (minutes > 0) parts.push(`${minutes} นาที`)
+    return parts.join(' ') || '0 นาที'
+  }
+
 
   // โหลดข้อมูลตาม filter
   const load = async () => {
@@ -62,6 +85,7 @@ export default function ReportsPage() {
     total_mile,
     bookings!inner (
       date,
+      time_slot,
       user_id,
       cars!inner ( plate ),
       profiles:user_id (
@@ -80,6 +104,7 @@ export default function ReportsPage() {
         date: r.bookings?.date ?? '',
         total_mile: Number(r.total_mile ?? (r.end_mile ?? 0) - (r.start_mile ?? 0)),
         department: r.bookings?.profiles?.department ?? '-',
+        time_slot: r.bookings?.time_slot ?? '',
       }))
 
 
@@ -109,15 +134,26 @@ export default function ReportsPage() {
   }, [rows])
 
   const byDepartment = useMemo(() => {
-    const dep: Record<string, { department: string; trips: number; totalKm: number }> = {}
+    const dep: Record<string, { department: string; trips: number; totalKm: number; totalMinutes: number }> = {}
     for (const r of rows) {
       const key = r.department || '-'
-      if (!dep[key]) dep[key] = { department: key, trips: 0, totalKm: 0 }
+      if (!dep[key]) dep[key] = { department: key, trips: 0, totalKm: 0, totalMinutes: 0 }
+
       dep[key].trips += 1
       dep[key].totalKm += Number.isFinite(r.total_mile) ? r.total_mile : 0
+
+      // ✅ รวมเวลาจาก time_slot
+      if (r.time_slot) {
+        const minutes = r.time_slot
+          .split(',')
+          .map(s => timeSlotToMinutes(s))
+          .reduce((a, b) => a + b, 0)
+        dep[key].totalMinutes += minutes
+      }
     }
     return Object.values(dep).sort((a, b) => a.department.localeCompare(b.department, 'th'))
   }, [rows])
+
 
 
   // ชื่อช่วงวันที่/เดือน เพื่อแสดงหัวรายงาน + ตั้งชื่อไฟล์
@@ -159,6 +195,7 @@ export default function ReportsPage() {
       'แผนก': d.department,
       'จำนวนครั้งที่ใช้ (ทริป)': d.trips,
       'รวมระยะทาง (กม.)': d.totalKm,
+      'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes),
     }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet3), 'สรุปต่อแผนก')
 
@@ -299,6 +336,7 @@ export default function ReportsPage() {
                     <th className="p-2 sm:p-3 text-left">แผนก</th>
                     <th className="p-2 sm:p-3 text-right">จำนวนทริป</th>
                     <th className="p-2 sm:p-3 text-right">รวมระยะทาง (กม.)</th>
+                    <th className="p-2 sm:p-3 text-right">เวลารวมทั้งหมด</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,6 +345,9 @@ export default function ReportsPage() {
                       <td className="p-2 sm:p-3">{r.department}</td>
                       <td className="p-2 sm:p-3 text-right">{r.trips.toLocaleString('th-TH')}</td>
                       <td className="p-2 sm:p-3 text-right">{r.totalKm.toLocaleString('th-TH')}</td>
+                      <td className="p-2 sm:p-3 text-right">
+                        {formatMinutesToReadable(r.totalMinutes)}
+                      </td>
                     </tr>
                   ))}
                   {byDepartment.length === 0 && (
