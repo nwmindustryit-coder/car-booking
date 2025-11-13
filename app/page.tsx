@@ -159,15 +159,29 @@ export default function Dashboard() {
 
   const loadBookings = async () => {
     const { data, error } = await supabase
-      .from('bookings')
-      .select('*, cars(plate)')
-      .order('date', { ascending: false })
+      .from("bookings")
+      .select(`
+      *,
+      cars(plate),
+      miles ( total_mile )
+    `)
+      .order("date", { ascending: false })
+
     if (error) console.error(error)
     else {
-      setBookings(data)
-      setFilteredBookings(data) // ✅ สำคัญ
+      const mapped = (data || []).map((b: any) => ({
+        ...b,
+        miles_status: b.miles && b.miles.length > 0 ? "recorded" : "missing",
+        total_mile:
+          b.miles && b.miles[0]?.total_mile
+            ? b.miles[0].total_mile
+            : null,
+      }))
+      setBookings(mapped)
+      setFilteredBookings(mapped)
     }
   }
+
 
   useEffect(() => {
     if (!search.trim()) {
@@ -309,103 +323,138 @@ export default function Dashboard() {
           <div className="bg-white rounded-xl shadow overflow-hidden">
             {Object.entries(
               filteredBookings.reduce((groups, booking) => {
-                const date = booking.date
+                const date = new Date(booking.date).toISOString().split("T")[0] // ✅ normalize วันที่
                 if (!groups[date]) groups[date] = []
                 groups[date].push(booking)
                 return groups
               }, {} as Record<string, any[]>)
-            ).map(([date, group]: [string, any[]]) => (
-              <div key={date} className="border-b last:border-none">
-                {/* ✅ ส่วนหัวของแต่ละวัน */}
-                <div
-                  className={`px-4 py-2 text-sm sm:text-base font-semibold text-white ${isToday(new Date(date)) ? "bg-green-600" : "bg-gray-600"
-                    }`}
-                >
-                  {format(new Date(date), "dd MMMM yyyy", { locale: th })}{" "}
-                  {isToday(new Date(date)) && "(วันนี้)"}
-                </div>
+            )
+              // ✅ เรียงจากวันใหม่ → เก่า
+              .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+              .map(([date, group]: [string, any[]], index) => {
+                // ✅ แปลงวันที่เพื่อใช้ใน format และเปรียบเทียบเดือน
+                const d = new Date(date)
+                const month = d.getMonth()
+                const isEvenMonth = month % 2 === 0
 
-                {/* ✅ ตารางข้อมูลของวันนั้น */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                    <thead className="bg-blue-100 text-blue-800">
-                      <tr>
-                        <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th>
-                        <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
-                        <th className="p-2 sm:p-3">ทะเบียนรถ</th>
-                        <th className="p-2 sm:p-3">วันที่</th>
-                        <th className="p-2 sm:p-3">ช่วงเวลา</th>
-                        <th className="p-2 sm:p-3">สถานที่</th>
-                        <th className="p-2 sm:p-3">เหตุผล</th>
-                        <th className="p-2 sm:p-3 text-center">จัดการ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.map((b: any) => (
-                        <tr key={b.id} className="border-b hover:bg-blue-50">
-                          <td className="p-2 sm:p-3">{b.user_name}</td>
-                          <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
-                          <td className="p-2 sm:p-3 text-center">
-                            <Badge>{b.cars?.plate}</Badge>
-                          </td>
-                          <td className="p-2 sm:p-3 text-center">{b.date}</td>
-                          <td className="p-2 sm:p-3 text-center">{mergeTimeSlots(b.time_slot)}</td>
-                          <td className="p-2 sm:p-3">{b.destination}</td>
-                          <td className="p-2 sm:p-3">{b.reason}</td>
-                          <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
-                            <Button size="sm" variant="outline" onClick={async () => {
-                              const { data: milesData, error } = await supabase
-                                .from("miles")
-                                .select("start_mile, end_mile, total_mile")
-                                .eq("booking_id", b.id)
-                                .limit(1)
-                                .maybeSingle()
+                // ✅ กำหนดสีพื้นหลังของหัวแต่ละเดือนสลับกัน
+                const bgColor = isToday(d)
+                  ? "bg-green-600"
+                  : isEvenMonth
+                    ? "bg-gray-700"
+                    : "bg-gray-600"
 
-                              if (error) console.error("Error loading miles:", error)
-                              setShowDetail({ ...b, miles: milesData || null })
-                            }}>
-                              <EyeIcon className="w-4 h-4 mr-1" /> ดู
-                            </Button>
+                return (
+                  <div key={date} className="border-b last:border-none">
+                    {/* ✅ ส่วนหัวของแต่ละวัน */}
+                    <div
+                      className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor}`}
+                    >
+                      <div>
+                        📅 {format(d, "dd MMMM yyyy", { locale: th })}{" "}
+                        {isToday(d) && "(วันนี้)"}
+                      </div>
+                      <div className="text-sm text-gray-200">
+                        ({group.length.toLocaleString("th-TH")} รายการ)
+                      </div>
+                    </div>
 
-                            <Button size="sm" variant="outline" onClick={() => setSelectedBooking(b)}>
-                              <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
-                            </Button>
+                    {/* ✅ ตารางข้อมูลของวันนั้น */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm min-w-[700px]">
+                        <thead className="bg-blue-100 text-blue-800">
+                          <tr>
+                            {/* <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th> */}
+                            <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
+                            <th className="p-2 sm:p-3">ทะเบียนรถ</th>
+                            <th className="p-2 sm:p-3">วันที่</th>
+                            <th className="p-2 sm:p-3">ช่วงเวลา</th>
+                            <th className="p-2 sm:p-3">สถานที่</th>
+                            <th className="p-2 sm:p-3">เหตุผล</th>
+                            <th className="p-2 sm:p-3 text-center">สถานะไมล์</th>
+                            <th className="p-2 sm:p-3 text-center">ดู</th>
+                            <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.map((b: any) => (
+                            <tr key={b.id} className="border-b hover:bg-blue-50">
+                              {/* <td className="p-2 sm:p-3">{b.user_name}</td> */}
+                              <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
+                              <td className="p-2 sm:p-3 text-center">
+                                <Badge>{b.cars?.plate}</Badge>
+                              </td>
+                              <td className="p-2 sm:p-3 text-center">{b.date}</td>
+                              <td className="p-2 sm:p-3 text-center">{mergeTimeSlots(b.time_slot)}</td>
+                              <td className="p-2 sm:p-3">{b.destination}</td>
+                              <td className="p-2 sm:p-3">{b.reason}</td>
+                              {/* ✅ แสดงสถานะเลขไมล์ */}
+                              <td className="p-2 sm:p-3 text-center">
+                                {b.miles_status === "recorded" ? (
+                                  <span className="text-green-700 font-semibold">
+                                    ✅ บันทึกแล้ว ({b.total_mile} กม.)
+                                  </span>
+                                ) : (
+                                  <span className="text-orange-600 font-semibold">
+                                    ⚠️ ยังไม่ได้บันทึกเลขไมล์
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2 sm:p-3 text-center">
+                                <Button size="sm" variant="outline" onClick={async () => {
+                                  const { data: milesData, error } = await supabase
+                                    .from("miles")
+                                    .select("start_mile, end_mile, total_mile")
+                                    .eq("booking_id", b.id)
+                                    .limit(1)
+                                    .maybeSingle()
 
-                            {b.user_id === user.id && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setEditForm({
-                                      driver_name: b.driver_name,
-                                      destination: b.destination,
-                                      reason: b.reason,
-                                      date: new Date(b.date),
-                                    })
-                                    setSelectedEditTimes(b.time_slot.split(",").map((s) => s.trim()))
-                                    setEditBooking(b)
-                                  }}
-                                >
-                                  ✏️
+                                  if (error) console.error("Error loading miles:", error)
+                                  setShowDetail({ ...b, miles: milesData || null })
+                                }}>
+                                  <EyeIcon className="w-4 h-4 mr-1" /> ดู
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDeleteBooking(b.id)}
-                                >
-                                  🗑️
+                                <Button size="sm" variant="outline" onClick={() => setSelectedBooking(b)}>
+                                  <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
                                 </Button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+                              </td>
+                              <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
+                                {b.user_id === user.id && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setEditForm({
+                                          driver_name: b.driver_name,
+                                          destination: b.destination,
+                                          reason: b.reason,
+                                          date: new Date(b.date),
+                                        })
+                                        setSelectedEditTimes(b.time_slot.split(",").map((s) => s.trim()))
+                                        setEditBooking(b)
+                                      }}
+                                    >
+                                      ✏️
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleDeleteBooking(b.id)}
+                                    >
+                                      🗑️
+                                    </Button>
+                                  </>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
           </div>
 
 

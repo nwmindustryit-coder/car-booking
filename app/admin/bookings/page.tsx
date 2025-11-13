@@ -93,26 +93,58 @@ export default function AdminBookings() {
         return formattedGroups.join(' และ ')
     }
 
+    const loadBookings = async () => {
+        const { data, error } = await supabase
+            .from("bookings")
+            .select(`
+    *,
+    cars(plate),
+    miles (
+      total_mile
+    )
+  `)
+
+            .order("date", { ascending: false })
+
+        if (error) {
+            console.error("Error loading bookings:", error)
+            return
+        }
+
+        // ✅ เพิ่ม field miles_status
+        const mapped = data.map((b: any) => ({
+            ...b,
+            miles_status: b.miles && b.miles.length > 0 ? "recorded" : "missing",
+            total_mile:
+                b.miles && b.miles[0]?.total_mile
+                    ? b.miles[0].total_mile
+                    : null,
+        }))
+
+        setBookings(mapped)
+    }
+
+
 
     // ✅ โหลดข้อมูลทั้งหมด
-    const load = async () => {
-        const { data, error } = await supabase
-            .from('bookings')
-            .select('*, cars(plate)')
-            .order('date', { ascending: false })
-        if (error) console.error(error)
-        setBookings(data || [])
-    }
+    // const load = async () => {
+    //     const { data, error } = await supabase
+    //         .from('bookings')
+    //         .select('*, cars(plate)')
+    //         .order('date', { ascending: false })
+    //     if (error) console.error(error)
+    //     setBookings(data || [])
+    // }
 
     // ✅ ลบได้ทุกคน
     const deleteBooking = async (id: number) => {
         if (!confirm('ต้องการลบการจองนี้หรือไม่?')) return
         const { error } = await supabase.from('bookings').delete().eq('id', id)
         if (error) alert(error.message)
-        else load()
+        else loadBookings()
     }
 
-    useEffect(() => { load() }, [])
+    useEffect(() => { loadBookings() }, [])
 
     // ✅ ตรวจสอบเวลาว่าง
     useEffect(() => {
@@ -153,152 +185,188 @@ export default function AdminBookings() {
 
     return (
         <>
-        <Navbar />
+            <Navbar />
             <main className="p-4 sm:p-6 max-w-6xl mx-auto">
-                <h1 className="text-xl sm:text-2xl font-bold text-blue-700">
+                <h1 className="text-xl sm:text-2xl font-bold text-blue-700 mb-4">
                     จัดการการจองทั้งหมด (แอดมิน)
                 </h1>
 
-                {/* ✅ แบ่งกลุ่มตามวันที่ */}
                 <div className="bg-white rounded-xl shadow overflow-hidden">
                     {Object.entries(
                         bookings.reduce((groups, booking) => {
-                            const date = booking.date
+                            const date = new Date(booking.date).toISOString().split("T")[0] // ✅ normalize วันที่
                             if (!groups[date]) groups[date] = []
                             groups[date].push(booking)
                             return groups
                         }, {} as Record<string, any[]>)
-                    ).map(([date, group]: [string, any[]]) => (
-                        <div key={date} className="border-b last:border-none">
+                    )
+                        // ✅ เรียงวันที่จากใหม่ → เก่า
+                        .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+                        .map(([date, group]: [string, any[]]) => {
+                            const d = new Date(date)
+                            const month = d.getMonth()
+                            const isEvenMonth = month % 2 === 0
 
-                            {/* ✅ ส่วนหัวของแต่ละวัน */}
-                            <div
-                                className={`px-4 py-2 text-sm sm:text-base font-semibold text-white ${isToday(new Date(date)) ? "bg-green-600" : "bg-gray-600"
-                                    }`}
-                            >
-                                {format(new Date(date), "dd MMMM yyyy", { locale: th })}{" "}
-                                {isToday(new Date(date)) && "(วันนี้)"}
-                            </div>
+                            // ✅ สีสลับแต่ละเดือน และเน้น "วันนี้"
+                            const bgColor = isToday(d)
+                                ? "bg-green-600"
+                                : isEvenMonth
+                                    ? "bg-gray-700"
+                                    : "bg-gray-600"
 
-                            {/* ✅ ตารางของวันนั้น */}
-                            <div className="overflow-x-auto">
-                            <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                                <thead className="bg-blue-100 text-blue-800">
-                                    <tr>
-                                        <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th>
-                                        <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
-                                        <th className="p-2 sm:p-3">ทะเบียนรถ</th>
-                                        <th className="p-2 sm:p-3">ช่วงเวลา</th>
-                                        <th className="p-2 sm:p-3">สถานที่</th>
-                                        <th className="p-2 sm:p-3">เหตุผล</th>
-                                        <th className="p-2 sm:p-3">ดู</th>
-                                        <th className="p-2 sm:p-3 text-center">จัดการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {group.map((b: any) => (
-                                        <tr key={b.id} className="border-b hover:bg-blue-50">
-                                            <td className="p-2 sm:p-3">{b.user_name}</td>
-                                            <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
-                                            <td className="p-2 sm:p-3 text-center">
-                                                <Badge>{b.cars?.plate}</Badge>
-                                            </td>
-                                            <td className="p-2 sm:p-3 text-center">
-                                                {mergeTimeSlots(b.time_slot)}
-                                            </td>
-                                            <td className="p-2 sm:p-3">{b.destination}</td>
-                                            <td className="p-2 sm:p-3">{b.reason}</td>
-                                            <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={async () => {
-                                                        const { data: milesData, error } = await supabase
-                                                            .from("miles")
-                                                            .select("start_mile, end_mile, total_mile")
-                                                            .eq("booking_id", b.id)
-                                                            .limit(1)
-                                                            .maybeSingle()
+                            return (
+                                <div key={date} className="border-b last:border-none">
+                                    {/* ✅ ส่วนหัวของแต่ละวัน */}
+                                    <div
+                                        className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor}`}
+                                    >
+                                        <div>
+                                            📅 {format(d, "dd MMMM yyyy", { locale: th })}{" "}
+                                            {isToday(d) && "(วันนี้)"}
+                                        </div>
+                                        <div className="text-sm text-gray-200">
+                                            ({group.length.toLocaleString("th-TH")} รายการ)
+                                        </div>
+                                    </div>
 
-                                                        if (error) console.error("Error loading miles:", error)
-                                                        setShowDetail({ ...b, miles: milesData || null })
-                                                    }}
-                                                >
-                                                    <EyeIcon className="w-4 h-4 mr-1" /> ดู
-                                                </Button>
-                                            </td>
-                                            <td className="p-3 text-center space-x-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    onClick={() => {
-                                                        setEditForm({
-                                                            driver_name: b.driver_name,
-                                                            destination: b.destination,
-                                                            reason: b.reason,
-                                                            date: new Date(b.date),
-                                                        })
-                                                        setSelectedEditTimes(
-                                                            b.time_slot.split(",").map((s) => s.trim())
-                                                        )
-                                                        setEditBooking(b)
-                                                    }}
-                                                >
-                                                    ✏️ แก้ไข
-                                                </Button>
+                                    {/* ✅ ตารางของวันนั้น */}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs sm:text-sm min-w-[700px]">
+                                            <thead className="bg-blue-100 text-blue-800">
+                                                <tr>
+                                                    <th className="p-2 sm:p-3 text-left">อีเมลผู้จอง</th>
+                                                    <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
+                                                    <th className="p-2 sm:p-3">ทะเบียนรถ</th>
+                                                    <th className="p-2 sm:p-3">ช่วงเวลา</th>
+                                                    <th className="p-2 sm:p-3">สถานที่</th>
+                                                    <th className="p-2 sm:p-3">เหตุผล</th>
+                                                    <th className="p-2 sm:p-3">เลขไมล์</th>
+                                                    <th className="p-2 sm:p-3">ดู</th>
+                                                    <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.map((b: any) => (
+                                                    <tr key={b.id} className="border-b hover:bg-blue-50">
+                                                        <td className="p-2 sm:p-3">{b.user_name}</td>
+                                                        <td className="p-2 sm:p-3 text-center">{b.driver_name}</td>
+                                                        <td className="p-2 sm:p-3 text-center">
+                                                            <Badge>{b.cars?.plate}</Badge>
+                                                        </td>
+                                                        <td className="p-2 sm:p-3 text-center">
+                                                            {mergeTimeSlots(b.time_slot)}
+                                                        </td>
+                                                        <td className="p-2 sm:p-3">{b.destination}</td>
+                                                        <td className="p-2 sm:p-3">{b.reason}</td>
 
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => deleteBooking(b.id)}
-                                                >
-                                                    🗑️ ลบ
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-                    ))}
+                                                        {/* ✅ แสดงสถานะเลขไมล์ */}
+                                                        <td className="p-2 sm:p-3 text-center">
+                                                            {b.miles_status === "recorded" ? (
+                                                                <span className="text-green-700 font-semibold">
+                                                                    ✅ บันทึกแล้ว ({b.total_mile} กม.)
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-orange-600 font-semibold">
+                                                                    ⚠️ ยังไม่ได้บันทึกเลขไมล์
+                                                                </span>
+                                                            )}
+                                                        </td>
+
+                                                        {/* ✅ ปุ่มดูรายละเอียด */}
+                                                        <td className="p-2 sm:p-3 text-center flex flex-col sm:flex-row sm:justify-center gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={async () => {
+                                                                    const { data: milesData, error } = await supabase
+                                                                        .from("miles")
+                                                                        .select("start_mile, end_mile, total_mile")
+                                                                        .eq("booking_id", b.id)
+                                                                        .limit(1)
+                                                                        .maybeSingle()
+
+                                                                    if (error) console.error("Error loading miles:", error)
+                                                                    setShowDetail({ ...b, miles: milesData || null })
+                                                                }}
+                                                            >
+                                                                <EyeIcon className="w-4 h-4 mr-1" /> ดู
+                                                            </Button>
+                                                        </td>
+
+                                                        {/* ✅ ปุ่มแก้ไข/ลบ */}
+                                                        <td className="p-3 text-center space-x-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                onClick={() => {
+                                                                    setEditForm({
+                                                                        driver_name: b.driver_name,
+                                                                        destination: b.destination,
+                                                                        reason: b.reason,
+                                                                        date: new Date(b.date),
+                                                                    })
+                                                                    setSelectedEditTimes(
+                                                                        b.time_slot.split(",").map((s) => s.trim())
+                                                                    )
+                                                                    setEditBooking(b)
+                                                                }}
+                                                            >
+                                                                ✏️ แก้ไข
+                                                            </Button>
+
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                onClick={() => deleteBooking(b.id)}
+                                                            >
+                                                                🗑️ ลบ
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )
+                        })}
                 </div>
                 {/* ✅ Dialog แสดงรายละเอียด */}
-        <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>รายละเอียดการจอง</DialogTitle>
-            </DialogHeader>
-            {showDetail && (
-              <div className="space-y-2 text-sm">
-                <p><b>อีเมลผู้จอง:</b> {showDetail.user_name}</p>
-                <p><b>ชื่อผู้ขับ:</b> {showDetail.driver_name}</p>
-                <p><b>ทะเบียนรถ:</b> {showDetail.cars?.plate}</p>
-                <p><b>วันที่:</b> {showDetail.date}</p>
-                <p><b>ช่วงเวลา:</b> {showDetail.time_slot}</p>
-                <p><b>สถานที่:</b> {showDetail.destination}</p>
-                <p><b>เหตุผล:</b> {showDetail.reason}</p>
+                <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>รายละเอียดการจอง</DialogTitle>
+                        </DialogHeader>
+                        {showDetail && (
+                            <div className="space-y-2 text-sm">
+                                <p><b>อีเมลผู้จอง:</b> {showDetail.user_name}</p>
+                                <p><b>ชื่อผู้ขับ:</b> {showDetail.driver_name}</p>
+                                <p><b>ทะเบียนรถ:</b> {showDetail.cars?.plate}</p>
+                                <p><b>วันที่:</b> {showDetail.date}</p>
+                                <p><b>ช่วงเวลา:</b> {showDetail.time_slot}</p>
+                                <p><b>สถานที่:</b> {showDetail.destination}</p>
+                                <p><b>เหตุผล:</b> {showDetail.reason}</p>
 
-                {/* ✅ แสดงเลขไมล์ถ้ามี */}
-                {showDetail.miles ? (
-                  <div className="pt-2 border-t mt-2">
-                    <p><b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}</p>
-                    <p><b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}</p>
-                    <p className="text-blue-700 font-semibold">
-                      🚗 ใช้ไปทั้งหมด {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="italic text-gray-400 pt-2 border-t mt-2">
-                    ยังไม่ได้บันทึกเลขไมล์
-                  </p>
-                )}
-              </div>
-            )}
+                                {/* ✅ แสดงเลขไมล์ถ้ามี */}
+                                {showDetail.miles ? (
+                                    <div className="pt-2 border-t mt-2">
+                                        <p><b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}</p>
+                                        <p><b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}</p>
+                                        <p className="text-blue-700 font-semibold">
+                                            🚗 ใช้ไปทั้งหมด {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="italic text-gray-400 pt-2 border-t mt-2">
+                                        ยังไม่ได้บันทึกเลขไมล์
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
 
-          </DialogContent>
-        </Dialog>
+                    </DialogContent>
+                </Dialog>
             </main>
 
             {/* ✅ Dialog แก้ไข */}
@@ -357,7 +425,7 @@ export default function AdminBookings() {
                                 } else {
                                     alert('อัปเดตข้อมูลเรียบร้อย ✅')
                                     setEditBooking(null)
-                                    load()
+                                    loadBookings()
                                 }
                             }}
                             className="space-y-3"
