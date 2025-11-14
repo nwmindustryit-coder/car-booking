@@ -27,6 +27,9 @@ export default function AdminBookings() {
     const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([])
     const [editBookingStatus, setEditBookingStatus] = useState<Record<string, string>>({})
     const [showDetail, setShowDetail] = useState<any | null>(null)
+    const [editStartMile, setEditStartMile] = useState('')
+    const [editEndMile, setEditEndMile] = useState('')
+
 
     const TIME_SLOTS = [
         'ก่อนเวลางาน',
@@ -98,9 +101,12 @@ export default function AdminBookings() {
             .from("bookings")
             .select(`
     *,
-    cars(plate),
-    miles (
+miles:miles!miles_booking_fk (
+      start_mile,
+      end_mile,
       total_mile
+    ),
+    cars(plate)
     )
   `)
 
@@ -114,15 +120,35 @@ export default function AdminBookings() {
         // ✅ เพิ่ม field miles_status
         const mapped = data.map((b: any) => ({
             ...b,
-            miles_status: b.miles && b.miles.length > 0 ? "recorded" : "missing",
-            total_mile:
-                b.miles && b.miles[0]?.total_mile
-                    ? b.miles[0].total_mile
-                    : null,
+            miles_status: b.miles ? "recorded" : "missing",
+            total_mile: b.miles?.total_mile ?? null,
+
         }))
 
         setBookings(mapped)
     }
+
+    useEffect(() => {
+        if (editBooking) {
+            const loadMiles = async () => {
+                const { data } = await supabase
+                    .from("miles")
+                    .select("start_mile, end_mile")
+                    .eq("booking_id", editBooking.id)
+                    .maybeSingle()
+
+                if (data) {
+                    setEditStartMile(data.start_mile?.toString() || "")
+                    setEditEndMile(data.end_mile?.toString() || "")
+                } else {
+                    setEditStartMile("")
+                    setEditEndMile("")
+                }
+            }
+            loadMiles()
+        }
+    }, [editBooking])
+
 
 
 
@@ -419,6 +445,28 @@ export default function AdminBookings() {
                                     })
                                     .eq('id', editBooking.id)
 
+                                // ✅ อัปเดตเลขไมล์ (เฉพาะถ้ากรอก)
+                                if (editStartMile && editEndMile) {
+                                    const total = Number(editEndMile) - Number(editStartMile)
+
+                                    const { error: milesError } = await supabase
+                                        .from("miles")
+                                        .upsert(
+                                            {
+                                                booking_id: editBooking.id,
+                                                start_mile: Number(editStartMile),
+                                                end_mile: Number(editEndMile)
+                                            },
+                                            { onConflict: "booking_id" }
+                                        )
+
+                                    if (milesError) {
+                                        console.error("Miles update error:", milesError)
+                                        alert("ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message)
+                                        return
+                                    }
+                                }
+
                                 if (error) {
                                     console.error('Update error:', error)
                                     alert(error.message)
@@ -457,7 +505,24 @@ export default function AdminBookings() {
                                 dateFormat="dd/MM/yyyy"
                                 className="border rounded-md p-2 w-full"
                             />
+                            {/* แก้ไขเลขไมล์ (Admin ก็แก้ได้) */}
+                            <div className="border-t pt-3">
+                                <label className="block text-sm font-medium">เลขไมล์เริ่มต้น</label>
+                                <Input
+                                    type="number"
+                                    value={editStartMile}
+                                    onChange={(e) => setEditStartMile(e.target.value)}
+                                    placeholder="เลขไมล์เริ่มต้น"
+                                />
 
+                                <label className="block text-sm font-medium mt-2">เลขไมล์สิ้นสุด</label>
+                                <Input
+                                    type="number"
+                                    value={editEndMile}
+                                    onChange={(e) => setEditEndMile(e.target.value)}
+                                    placeholder="เลขไมล์สิ้นสุด"
+                                />
+                            </div>
 
                             <label className="block text-sm font-medium">ช่วงเวลา</label>
                             <div className="grid grid-cols-2 gap-2">

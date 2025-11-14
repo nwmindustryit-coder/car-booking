@@ -32,6 +32,10 @@ export default function Dashboard() {
   const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([])
   const [editBookingStatus, setEditBookingStatus] = useState<Record<string, string>>({})
   const [filteredBookings, setFilteredBookings] = useState<any[]>([])
+  const [editStartMile, setEditStartMile] = useState('')
+  const [editEndMile, setEditEndMile] = useState('')
+
+
   const [editForm, setEditForm] = useState({
     driver_name: '',
     destination: '',
@@ -41,6 +45,30 @@ export default function Dashboard() {
 
 
   const router = useRouter()
+
+  useEffect(() => {
+    if (editBooking) {
+      const loadMiles = async () => {
+        const { data } = await supabase
+          .from("miles")
+          .select("start_mile, end_mile")
+          .eq("booking_id", editBooking.id)
+          .maybeSingle()
+
+        if (data) {
+          setEditStartMile(data.start_mile?.toString() || '')
+          setEditEndMile(data.end_mile?.toString() || '')
+
+        } else {
+          setEditStartMile('')
+          setEditEndMile('')
+        }
+      }
+
+      loadMiles()
+    }
+  }, [editBooking])
+
 
   // ✅ ฟังก์ชันแก้ไขการจอง
   const handleEditBooking = async (booking: any) => {
@@ -58,6 +86,7 @@ export default function Dashboard() {
       alert('แก้ไขข้อมูลสำเร็จ')
       loadBookings()
     }
+
   }
 
   // ✅ ฟังก์ชันลบการจอง
@@ -161,22 +190,25 @@ export default function Dashboard() {
     const { data, error } = await supabase
       .from("bookings")
       .select(`
-      *,
-      cars(plate),
-      miles ( total_mile )
-    `)
+    *,
+    miles:miles!miles_booking_fk (
+      start_mile,
+      end_mile,
+      total_mile
+    ),
+    cars(plate)
+  `)
       .order("date", { ascending: false })
 
     if (error) console.error(error)
     else {
       const mapped = (data || []).map((b: any) => ({
         ...b,
-        miles_status: b.miles && b.miles.length > 0 ? "recorded" : "missing",
-        total_mile:
-          b.miles && b.miles[0]?.total_mile
-            ? b.miles[0].total_mile
-            : null,
+        miles_status: b.miles ? "recorded" : "missing",
+        total_mile: b.miles?.total_mile ?? null,
+
       }))
+
       setBookings(mapped)
       setFilteredBookings(mapped)
     }
@@ -266,6 +298,9 @@ export default function Dashboard() {
       setStartMile('')
       setEndMile('')
       setUsedMile(null)
+
+      // ✅ รีโหลดข้อมูลใหม่ (ไม่ต้องโหลดทั้งหน้า)
+      await loadBookings()
     }
   }
 
@@ -336,6 +371,7 @@ export default function Dashboard() {
                 const d = new Date(date)
                 const month = d.getMonth()
                 const isEvenMonth = month % 2 === 0
+                const canManage = group.some(b => b.user_id === user.id)
 
                 // ✅ กำหนดสีพื้นหลังของหัวแต่ละเดือนสลับกัน
                 const bgColor = isToday(d)
@@ -373,7 +409,10 @@ export default function Dashboard() {
                             <th className="p-2 sm:p-3">เหตุผล</th>
                             <th className="p-2 sm:p-3 text-center">สถานะไมล์</th>
                             <th className="p-2 sm:p-3 text-center">ดู</th>
-                            <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                            {/* ✨ แสดงเฉพาะเมื่อมีสิทธิ์แก้ไข */}
+                            {canManage && (
+                              <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -414,17 +453,26 @@ export default function Dashboard() {
                                 }}>
                                   <EyeIcon className="w-4 h-4 mr-1" /> ดู
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => setSelectedBooking(b)}>
+                                <Button
+                                  size="sm"
+                                  variant={b.miles_status === "recorded" ? "secondary" : "outline"}
+                                  disabled={b.miles_status === "recorded"}
+                                  onClick={() => {
+                                    if (b.miles_status === "recorded") return; // ป้องกันคลิก
+                                    setSelectedBooking(b);
+                                  }}
+                                  className={b.miles_status === "recorded" ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                   <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
                                 </Button>
+
                               </td>
-                              <td className="p-2 sm:p-3 text-center space-y-1 sm:space-x-2 sm:space-y-0 flex flex-col sm:flex-row justify-center">
-                                {b.user_id === user.id && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() => {
+                              {/* ✨ แสดงเฉพาะเมื่อผู้ใช้มีสิทธิ์ */}
+                              {canManage && (
+                                <td className="p-2 sm:p-3 text-center space-x-2">
+                                  {b.user_id === user.id && (
+                                    <>
+                                      <Button size="sm" variant="secondary" onClick={() => {
                                         setEditForm({
                                           driver_name: b.driver_name,
                                           destination: b.destination,
@@ -433,20 +481,17 @@ export default function Dashboard() {
                                         })
                                         setSelectedEditTimes(b.time_slot.split(",").map((s) => s.trim()))
                                         setEditBooking(b)
-                                      }}
-                                    >
-                                      ✏️
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => handleDeleteBooking(b.id)}
-                                    >
-                                      🗑️
-                                    </Button>
-                                  </>
-                                )}
-                              </td>
+                                      }}>
+                                        ✏️
+                                      </Button>
+
+                                      <Button size="sm" variant="destructive" onClick={() => handleDeleteBooking(b.id)}>
+                                        🗑️
+                                      </Button>
+                                    </>
+                                  )}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -580,26 +625,48 @@ export default function Dashboard() {
                     }
 
                     // ✅ อัปเดตข้อมูล
-                    const { error } = await supabase
-                      .from('bookings')
+                    // 1) อัปเดต booking ก่อน
+                    const { error: bookingError } = await supabase
+                      .from("bookings")
                       .update({
                         driver_name: editForm.driver_name,
                         destination: editForm.destination,
                         reason: editForm.reason,
                         time_slot: newTimeSlots,
-                        date: editForm.date.toLocaleDateString('sv-SE'), // ✅ ใช้ format มาตรฐาน YYYY-MM-DD
+                        date: editForm.date.toLocaleDateString("sv-SE"),
                       })
-                      .eq('id', editBooking.id)
-                      .eq('user_id', user.id) // ป้องกันไม่ให้แก้ของคนอื่น
+                      .eq("id", editBooking.id)
+                      .eq("user_id", user.id)
 
-                    if (error) {
-                      console.error('Update error:', error)
-                      alert(error.message)
-                    } else {
-                      alert('อัปเดตข้อมูลเรียบร้อย ✅')
-                      setEditBooking(null)
-                      loadBookings()
+                    if (bookingError) {
+                      console.error("Update booking error:", bookingError)
+                      alert(bookingError.message)
+                      return
                     }
+
+                    // 2) อัปเดตเลขไมล์ (เฉพาะถ้ากรอก)
+                    if (editStartMile && editEndMile) {
+                      const total = Number(editEndMile) - Number(editStartMile)
+
+                      const { error: milesError } = await supabase.from("miles").upsert({
+                        booking_id: editBooking.id,  // ใช้ number ตรง ๆ
+                        start_mile: Number(editStartMile),
+                        end_mile: Number(editEndMile)
+                        // total_mile: total
+                      }, { onConflict: "booking_id" } // สำคัญมาก ถ้าไม่ใส่ จะไม่แก้ค่าเดิม!
+                      )
+
+                      if (milesError) {
+                        console.error("Miles update error:", milesError)
+                        alert("ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message)
+                        return
+                      }
+                    }
+
+                    // 3) สำเร็จ → ปิด dialog + รีโหลด
+                    alert("อัปเดตข้อมูลเรียบร้อย ✅")
+                    setEditBooking(null)
+                    loadBookings()
                   }}
                   className="space-y-3"
                 >
@@ -627,6 +694,25 @@ export default function Dashboard() {
                       setEditForm({ ...editForm, reason: e.target.value })
                     }
                   />
+                  {/* แก้ไขเลขไมล์ */}
+                  <div className="border-t pt-3">
+                    <label className="block text-sm font-medium">เลขไมล์เริ่มต้น</label>
+                    <Input
+                      type="number"
+                      value={editStartMile}
+                      onChange={(e) => setEditStartMile(e.target.value)}
+                      placeholder="เลขไมล์เริ่มต้น"
+                    />
+
+                    <label className="block text-sm font-medium mt-2">เลขไมล์สิ้นสุด</label>
+                    <Input
+                      type="number"
+                      value={editEndMile}
+                      onChange={(e) => setEditEndMile(e.target.value)}
+                      placeholder="เลขไมล์สิ้นสุด"
+                    />
+                  </div>
+
 
                   {/* ✅ ส่วนเลือกช่วงเวลาใหม่ */}
                   {/* ✅ ส่วนเลือกวันที่ใหม่ */}
