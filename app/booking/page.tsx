@@ -59,7 +59,7 @@ export default function BookingPage() {
         init()
     }, [router])
 
-    
+
 
     // ตรวจสอบว่าช่วงเวลาใดถูกจองแล้ว
     useEffect(() => {
@@ -129,6 +129,7 @@ export default function BookingPage() {
 
         // ✅ insert ครั้งเดียว
         const { error } = await supabase.from('bookings').insert({
+
             user_id: user.id,
             user_name: user.email,
             car_id: form.car_id,
@@ -139,10 +140,27 @@ export default function BookingPage() {
             reason: form.reason,
         })
 
-        if (error) console.error(error)
-        else alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`)
-        router.push('/')
+        if (error) {
+            console.error(error)
+        } else {
 
+            // 🟢 ส่งแจ้งเตือน LINE Notify — เมื่อมีการจองใหม่
+            await fetch("/api/line/notify-booking", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    // user_name: user.email,
+                    driver_name: form.driver_name,
+                    destination: form.destination,
+                    time_slot: combinedSlot,
+                    car_plate: cars.find(c => c.id == form.car_id)?.plate || "",
+                    date: date.toLocaleDateString('sv-SE'),
+                }),
+            });
+
+            alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`)
+            router.push('/')
+        }
     }
 
     if (!user) {

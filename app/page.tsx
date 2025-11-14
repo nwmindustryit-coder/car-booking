@@ -662,8 +662,20 @@ export default function Dashboard() {
                         return
                       }
                     }
-
                     // 3) สำเร็จ → ปิด dialog + รีโหลด
+                    // 🎉 ส่งแจ้งเตือน LINE เมื่อมีการแก้ไขการจอง
+                    await fetch("/api/line/notify-edit", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        driver_name: editForm.driver_name,
+                        destination: editForm.destination,
+                        time_slot: newTimeSlots,
+                        date: editForm.date.toLocaleDateString("sv-SE"),
+                        car_plate: editBooking.cars?.plate || "",
+                      }),
+                    });
+
                     alert("อัปเดตข้อมูลเรียบร้อย ✅")
                     setEditBooking(null)
                     loadBookings()
