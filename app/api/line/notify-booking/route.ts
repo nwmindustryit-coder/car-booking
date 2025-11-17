@@ -3,12 +3,20 @@ import { getLineClient } from "@/line/client";
 import { BookingCreatedFlex } from "@/line/flex/booking-created";
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const lineClient = getLineClient();
+  try {
+    const body = await req.json();
+    const lineClient = getLineClient();
 
-  await lineClient.broadcast([
-    BookingCreatedFlex(body)
-  ]);
+    const message = BookingCreatedFlex(body);
 
-  return NextResponse.json({ success: true });
+    const resp = await lineClient.broadcast([message]);
+
+    return NextResponse.json({ success: true, resp });
+  } catch (err: any) {
+    console.error("LINE ERROR:", err);
+    return NextResponse.json(
+      { success: false, error: err.message, details: err },
+      { status: 500 }
+    );
+  }
 }
