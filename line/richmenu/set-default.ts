@@ -1,8 +1,9 @@
-import { lineClient } from "../client";
+import { getLineClient  } from "../client";
 import "dotenv/config";
 
 async function setDefault() {
   const richMenuId = process.env.LINE_RICH_MENU_ID;
+  const lineClient = getLineClient();
   if (!richMenuId) {
     console.error("❌ LINE_RICH_MENU_ID not found in .env.richmenu");
     return;
