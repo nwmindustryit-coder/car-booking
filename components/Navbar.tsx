@@ -115,9 +115,9 @@ export default function Navbar() {
               จัดการระบบ
             </Link>
           )}
-            <Link href="/private-mile" className="hover:underline">
-              ลงไมล์รถส่วนตัว
-            </Link>
+          <Link href="/private-mile" className="hover:underline">
+            ลงไมล์รถส่วนตัว
+          </Link>
           <button
             onClick={handleLogout}
             className="bg-white text-blue-600 px-3 py-1 rounded-md hover:bg-blue-100 transition"
@@ -143,7 +143,9 @@ export default function Navbar() {
               จัดการระบบ
             </Link>
           )}
-
+          <Link href="/private-mile" className="hover:underline">
+            ลงไมล์รถส่วนตัว
+          </Link>
 
           <button
             onClick={() => {
