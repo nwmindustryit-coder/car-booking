@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { lineClient } from "@/line/client";
+import { getLineClient } from "@/line/client";
 import { BookingCreatedFlex } from "@/line/flex/booking-created";
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const lineClient = getLineClient();
 
   await lineClient.broadcast([
     BookingCreatedFlex(body)

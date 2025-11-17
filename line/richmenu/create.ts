@@ -1,6 +1,7 @@
-import { lineClient } from "../client";
+import { getLineClient } from "../client";
 
 export async function createRichMenu() {
+  const lineClient = getLineClient();
   const richMenu = await lineClient.createRichMenu({
     size: { width: 2500, height: 1686 },
     selected: true,
