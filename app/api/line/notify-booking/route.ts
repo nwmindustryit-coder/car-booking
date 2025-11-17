@@ -20,3 +20,4 @@ export async function POST(req: Request) {
     );
   }
 }
+console.log("TOKEN RUNTIME:", process.env.LINE_CHANNEL_ACCESS_TOKEN);
