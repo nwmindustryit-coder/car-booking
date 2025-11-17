@@ -217,7 +217,7 @@ export default function PrivateMileageReportPage() {
                                         <div className="flex gap-2 ml-6">
                                             <DatePicker
                                                 selected={startDate}
-                                                onChange={d => setStartDate(d)}
+                                                onChange={(date: Date | null) => setStartDate(date)}
                                                 dateFormat="dd/MM/yyyy"
                                                 className="border px-2 py-1 rounded-md"
                                                 placeholderText="วันเริ่มต้น"
@@ -225,10 +225,10 @@ export default function PrivateMileageReportPage() {
                                             <span>ถึง</span>
                                             <DatePicker
                                                 selected={endDate}
-                                                onChange={d => setEndDate(d)}
-                                                dateFormat="dd/MM/yyyy"
-                                                className="border px-2 py-1 rounded-md"
-                                                placeholderText="วันสิ้นสุด"
+                                                onChange={(date: Date | null) => setStartDate(date)}
+                                                dateFormat="dd/MM/yyyy""
+                                            className="border px-2 py-1 rounded-md"
+                                            placeholderText="วันสิ้นสุด"
                                             />
                                         </div>
                                     )}
