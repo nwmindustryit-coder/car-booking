@@ -111,7 +111,7 @@ export default function PrivateMileagePage() {
         setStartMile('')
         setEndMile('')
         setRemark('')
-        setEmployeeName('')  
+        setEmployeeName('')
         setEditingId(null)
     }
 
@@ -297,7 +297,7 @@ export default function PrivateMileagePage() {
                                     </label>
                                     <DatePicker
                                         selected={date}
-                                        onChange={d => setDate(d)}
+                                        onChange={(date: Date | null) => setDate(date)}
                                         dateFormat="dd/MM/yyyy"
                                         className="border rounded-md p-2 w-full text-sm"
                                         locale={th}

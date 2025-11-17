@@ -226,8 +226,8 @@ export default function PrivateMileageReportPage() {
                                             <DatePicker
                                                 selected={endDate}
                                                 onChange={(date: Date | null) => setStartDate(date)}
-                                                dateFormat="dd/MM/yyyy""
-                                            className="border px-2 py-1 rounded-md"
+                                                dateFormat="dd/MM/yyyy"
+                                                className="border px-2 py-1 rounded-md"
                                             placeholderText="วันสิ้นสุด"
                                             />
                                         </div>
