@@ -400,7 +400,7 @@ export default function PrivateMileageReportPage() {
 
                                     <tbody>
                                         {(() => {
-                                            const MAX_ROWS = 25;
+                                            const MAX_ROWS = 20;
 
                                             // ✓ เลือกแถวที่จะใช้จริง
                                             const printRows = filterType === 'select'
