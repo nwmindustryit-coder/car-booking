@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLineClient  } from "@/line/client";
+import { getLineClient } from "@/line/client";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -55,7 +55,24 @@ export async function POST(req: Request) {
               text: `📍 สถานที่: ${body.destination}`,
             }
           ]
-        }
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          spacing: "md",
+          contents: [
+            {
+              type: "button",
+              style: "primary",
+              color: "#1E88E5",
+              action: {
+                type: "uri",
+                label: "เปิดหน้าเว็บจองรถ",
+                uri: "https://car-booking-tan.vercel.app/",
+              },
+            },
+          ],
+        },
       }
     }
   ]);
