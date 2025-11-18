@@ -14,7 +14,7 @@ export async function createRichMenu() {
         action: { type: "uri", uri: "https://car-booking-tan.vercel.app/booking" },
       },
 
-      // ปุ่มกลาง → ลงเลขไมล์รถส่วนตัว (ลิงก์ชั่วคราว)
+      // ปุ่มกลาง → ลงเลขไมล์รถส่วนตัว
       {
         bounds: { x: 833, y: 843, width: 833, height: 843 },
         action: { type: "uri", uri: "https://car-booking-tan.vercel.app/private-mile" },

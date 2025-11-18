@@ -35,24 +35,24 @@ export async function POST(req: Request) {
             },
             {
               type: "text",
-              text: `ผู้ขับ: ${body.driver_name}`,
+              text: `🚘 ผู้ขับ: ${body.driver_name}`,
               margin: "md"
             },
             {
               type: "text",
-              text: `รถ: ${body.car_plate}`,
+              text: `🔖 รถ: ${body.car_plate}`,
             },
             {
               type: "text",
-              text: `วันที่: ${body.date}`,
+              text: `📅 วันที่: ${body.date}`,
             },
             {
               type: "text",
-              text: `เวลา: ${body.time_slot}`,
+              text: `⏰ เวลา: ${body.time_slot}`,
             },
             {
               type: "text",
-              text: `สถานที่: ${body.destination}`,
+              text: `📍 สถานที่: ${body.destination}`,
             }
           ]
         }
