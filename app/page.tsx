@@ -191,7 +191,8 @@ export default function Dashboard() {
       .from("bookings")
       .select(`
     *,
-    miles:miles!miles_booking_fk (
+    miles:miles!miles_booking_id_fkey(
+    id,
       start_mile,
       end_mile,
       total_mile

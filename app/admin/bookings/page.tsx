@@ -30,7 +30,7 @@ export default function AdminBookings() {
     const [editStartMile, setEditStartMile] = useState('')
     const [editEndMile, setEditEndMile] = useState('')
 
-    
+
 
     const TIME_SLOTS = [
         'ก่อนเวลางาน',
@@ -102,7 +102,8 @@ export default function AdminBookings() {
             .from("bookings")
             .select(`
     *,
-miles:miles!miles_booking_fk (
+    miles:miles!miles_booking_id_fkey(
+    id,
       start_mile,
       end_mile,
       total_mile
