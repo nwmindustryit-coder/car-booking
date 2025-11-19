@@ -11,7 +11,7 @@ import { Printer, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 
-const RATE_PER_KM = 3.5
+const RATE_PER_KM = 5
 const ADMIN_EMAILS = ['theeraphat@nawamit.com']
 
 type MileageRow = {

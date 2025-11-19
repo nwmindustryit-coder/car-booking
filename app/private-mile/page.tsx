@@ -15,7 +15,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { Pencil, Trash2, FileText, ArrowLeft } from 'lucide-react'
 
-const RATE_PER_KM = 3.5
+const RATE_PER_KM = 5
 
 // ✅ แก้ให้เป็น email admin จริงของคุณ
 const ADMIN_EMAILS = ['theeraphat@nawamit.com']
