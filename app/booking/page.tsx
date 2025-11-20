@@ -213,7 +213,7 @@ export default function BookingPage() {
                             </select>
 
                             <label className="block text-sm font-medium">ชื่อผู้ขับ</label>
-                            <input className="w-full border p-2 rounded-md" value={form.driver_name} onChange={(e) => setForm({ ...form, driver_name: e.target.value })} />
+                            <input className="w-full border p-2 rounded-md" value={form.driver_name} onChange={(e) => setForm({ ...form, driver_name: e.target.value })} required/>
 
                             <label className="block text-sm font-medium">เลือกช่วงเวลา</label>
                             <div className="grid grid-cols-2 gap-2">
