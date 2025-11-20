@@ -207,7 +207,7 @@ export default function BookingPage() {
                             <DatePicker selected={date} onChange={setDate} className="border rounded-md p-2 w-full" dateFormat="dd/MM/yyyy" />
 
                             <label className="block text-sm font-medium">ทะเบียนรถ</label>
-                            <select className="w-full border p-2 rounded-md" value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })}>
+                            <select className="w-full border p-2 rounded-md" value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })} required>
                                 <option value="">-- เลือกรถ --</option>
                                 {cars.map((c) => <option key={c.id} value={c.id}>{c.plate}</option>)}
                             </select>
@@ -236,10 +236,10 @@ export default function BookingPage() {
                             </div>
 
                             <label className="block text-sm font-medium">สถานที่</label>
-                            <input className="w-full border p-2 rounded-md" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
+                            <input className="w-full border p-2 rounded-md" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} required/>
 
                             <label className="block text-sm font-medium">เหตุผล</label>
-                            <textarea className="w-full border p-2 rounded-md" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}></textarea>
+                            <textarea className="w-full border p-2 rounded-md" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}required></textarea>
 
                             <Button type="submit" className="w-full bg-blue-600 text-white py-2">บันทึกการจอง</Button>
                             {/* ปุ่มกลับ */}
