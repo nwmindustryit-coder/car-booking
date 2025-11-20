@@ -60,12 +60,18 @@ export default function WorkOutPage() {
 
     const calcHours = () => {
         if (!startTime || !endTime) return 0
+
         const s = new Date(`2000-01-01T${startTime}`)
         const e = new Date(`2000-01-01T${endTime}`)
+
         if (e < s) e.setDate(e.getDate() + 1)
-        const diff = (e - s) / 1000 / 3600
+
+        const diffMs = e.getTime() - s.getTime()   // <-- แก้ตรงนี้
+        const diff = diffMs / 1000 / 3600          // <-- ใช้ diffMs แทน
+
         return Math.round(diff * 100) / 100
     }
+
 
     const calcAmount = () => {
         const h = calcHours()
