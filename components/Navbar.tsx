@@ -118,6 +118,9 @@ export default function Navbar() {
           <Link href="/private-mile" className="hover:underline">
             ลงไมล์รถส่วนตัว
           </Link>
+          <Link href="/work-out" className="hover:underline">
+            บันทึกเวลาทำงานนอกสถานที่
+          </Link>
           <button
             onClick={handleLogout}
             className="bg-white text-blue-600 px-3 py-1 rounded-md hover:bg-blue-100 transition"
@@ -145,6 +148,10 @@ export default function Navbar() {
           )}
           <Link href="/private-mile" className="hover:underline">
             ลงไมล์รถส่วนตัว
+          </Link>
+          <br />
+          <Link href="/work-out" className="hover:underline">
+            บันทึกเวลาทำงานนอกสถานที่
           </Link>
 
           <button
