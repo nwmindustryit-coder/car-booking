@@ -34,7 +34,38 @@ export default function Dashboard() {
   const [filteredBookings, setFilteredBookings] = useState<any[]>([])
   const [editStartMile, setEditStartMile] = useState('')
   const [editEndMile, setEditEndMile] = useState('')
+  const [alerts, setAlerts] = useState<any[]>([])
 
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: cars } = await supabase.from("cars").select("*")
+      const { data: maintenance } = await supabase.from("car_maintenance").select("*")
+      const { data: log } = await supabase.from("car_mileage_log").select("*")
+
+      const result: any[] = []
+
+      cars?.forEach(car => {
+        const m = maintenance.find(x => x.car_id === car.id)
+        const mg = log.find(x => x.car_id === car.id)
+
+        if (!m || !mg) return
+
+        const remain = m.next_service_mileage - mg.current_mileage
+
+        if (remain <= m.alert_before_mileage) {
+          result.push({
+            plate: car.plate,
+            remain
+          })
+        }
+      })
+
+      setAlerts(result)
+    }
+
+    load()
+  }, [])
 
   const [editForm, setEditForm] = useState({
     driver_name: '',
@@ -340,6 +371,16 @@ export default function Dashboard() {
   return (
 
     <>
+      {/* แจ้งเตือน */}
+      {alerts.length > 0 && (
+        <div className="bg-red-600 text-white py-2 animate-pulse text-center font-semibold">
+          {alerts.map((a, idx) => (
+            <div key={idx}>
+              🔔 รถทะเบียน {a.plate} เหลืออีก {a.remaining} กม. ถึงกำหนดเข้าศูนย์!
+            </div>
+          ))}
+        </div>
+      )}
       <Navbar />
       <div className="p-6">
         <main className="p-4 sm:p-6 max-w-6xl mx-auto">

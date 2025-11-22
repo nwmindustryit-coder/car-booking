@@ -44,6 +44,14 @@ export default function AdminPage() {
               <Link href="/admin/reports" className="text-blue-600 hover:underline">ออกรายงาน</Link>
             </CardContent>
           </Card>
+          <Card className="hover:shadow-lg transition">
+            <CardHeader>
+              <CardTitle>⚠️ แจ้งระยะเข้าศูนย์</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/car-maintenance" className="text-blue-600 hover:underline">กรอกข้อมูล</Link>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </>
