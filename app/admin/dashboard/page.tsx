@@ -6,7 +6,6 @@ import {
   Bar,
   Line,
   Doughnut,
-  HorizontalBar,
 } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend } from 'chart.js'
 import { format } from 'date-fns'
