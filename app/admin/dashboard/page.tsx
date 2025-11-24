@@ -55,15 +55,18 @@ export default function DashboardPage() {
             const mapped = (bookingsRaw || []).map(b => {
                 const m = milesMap[b.id] || null
 
-                const carPlate =
-                    Array.isArray(b.cars)
-                        ? b.cars[0]?.plate ?? '-'
-                        : b.cars?.plate ?? '-'
+                // ปลอดภัย 100%
+                const carPlate = (() => {
+                    if (!b.cars) return '-'
+                    if (Array.isArray(b.cars)) return b.cars[0]?.plate ?? '-'
+                    return b.cars.plate ?? '-'
+                })()
 
-                const dept =
-                    Array.isArray(b.profiles)
-                        ? b.profiles[0]?.department ?? '-'
-                        : b.profiles?.department ?? '-'
+                const dept = (() => {
+                    if (!b.profiles) return '-'
+                    if (Array.isArray(b.profiles)) return b.profiles[0]?.department ?? '-'
+                    return b.profiles.department ?? '-'
+                })()
 
                 return {
                     plate: carPlate,
@@ -73,6 +76,7 @@ export default function DashboardPage() {
                     total_mile: m ? (m.total_mile ?? (m.end_mile - m.start_mile)) : 0,
                 }
             })
+
 
 
             setRows(mapped)
