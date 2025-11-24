@@ -228,19 +228,36 @@ export default function ReportsPage() {
       )
 
       // รวม bookings + miles
-      const mapped: Row[] = (bookingsRaw || []).map(b => {
+      const mapped: Row[] = (bookingsRaw || []).map((b: any) => {
         const m = milesMap[b.id] || null
 
+        // plate — ปลอดภัยทุกกรณี
+        const plate = (() => {
+          const c: any = b.cars
+          if (!c) return '-'
+          if (Array.isArray(c)) return c[0]?.plate ?? '-'
+          return c.plate ?? '-'
+        })()
+
+        // department — ปลอดภัยทุกกรณี
+        const dept = (() => {
+          const p: any = b.profiles
+          if (!p) return '-'
+          if (Array.isArray(p)) return p[0]?.department ?? '-'
+          return p.department ?? '-'
+        })()
+
         return {
-          plate: b.cars?.plate ?? '-',
+          plate,
           date: b.date,
-          department: b.profiles?.department ?? '-',
+          department: dept,
           time_slot: b.time_slot ?? '',
           total_mile: m
             ? (m.total_mile ?? (m.end_mile - m.start_mile))
             : null,
         }
       })
+
 
       setRows(mapped)
     } catch (e: any) {
