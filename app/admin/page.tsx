@@ -41,7 +41,8 @@ export default function AdminPage() {
               <CardTitle>📝 รายงาน</CardTitle>
             </CardHeader>
             <CardContent>
-              <Link href="/admin/reports" className="text-blue-600 hover:underline">ออกรายงาน</Link>
+              <Link href="/admin/reports" className="text-blue-600 hover:underline">ออกรายงาน</Link><br />
+              <Link href="/admin/dashboard" className="text-blue-600 hover:underline">Dashboard</Link>
             </CardContent>
           </Card>
           <Card className="hover:shadow-lg transition">

@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<any[]>([])
 
 
+
   useEffect(() => {
     const load = async () => {
       const { data: cars } = await supabase.from("cars").select("*")

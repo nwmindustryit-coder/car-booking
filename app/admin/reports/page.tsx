@@ -36,6 +36,129 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
 
+  // 🔵 สรุปเวลาการใช้รถ "ต่อแผนก" (ไม่ใช้เลขไมล์)
+  // const aggregatedTimeByDept = useMemo(() => {
+  //   const map: Record<string, { department: string; trips: number; totalMinutes: number }> = {}
+
+  //   for (const r of rows) {
+  //     const dept = r.department || '-'
+  //     if (!map[dept]) {
+  //       map[dept] = { department: dept, trips: 0, totalMinutes: 0 }
+  //     }
+
+  //     // ถ้าไม่มี time_slot ข้ามไป
+  //     if (!r.time_slot) continue
+
+  //     const minutes = r.time_slot
+  //       .split(',')
+  //       .map(s => timeSlotToMinutes(s))
+  //       .reduce((a, b) => a + b, 0)
+
+  //     map[dept].trips += 1
+  //     map[dept].totalMinutes += minutes
+  //   }
+
+  //   return Object.values(map)
+  //     .sort((a, b) => a.department.localeCompare(b.department, 'th'))
+  // }, [rows])
+
+
+  // 🔵 สรุปเวลาต่อทะเบียน (แบบไม่ใช้เลขไมล์)
+  // const aggregatedTime = useMemo(() => {
+  //   const map: Record<string, { plate: string; trips: number; totalMinutes: number }> = {}
+
+  //   for (const r of rows) {
+  //     if (!r.time_slot) continue
+
+  //     if (!map[r.plate]) {
+  //       map[r.plate] = { plate: r.plate, trips: 0, totalMinutes: 0 }
+  //     }
+
+  //     const minutes = r.time_slot
+  //       .split(',')
+  //       .map(s => timeSlotToMinutes(s))
+  //       .reduce((a, b) => a + b, 0)
+
+  //     map[r.plate].trips += 1
+  //     map[r.plate].totalMinutes += minutes
+  //   }
+
+  //   return Object.values(map)
+  //     .sort((a, b) => a.plate.localeCompare(b.plate, 'th'))
+  // }, [rows])
+
+  // สรุปต่อทะเบียน (รวมทุกทริป)
+  // const aggregated = useMemo(() => {
+  //   const result: Record<string, AggRow> = {}
+
+  //   for (const r of rows) {
+  //     if (!result[r.plate]) {
+  //       result[r.plate] = { plate: r.plate, trips: 0, totalKm: 0 }
+  //     }
+
+  //     // ทุกแถวคือ 1 ทริป
+  //     result[r.plate].trips += 1
+
+  //     // ถ้ามีไมล์ → เพิ่ม km
+  //     if (Number.isFinite(r.total_mile)) {
+  //       result[r.plate].totalKm += r.total_mile
+  //     }
+  //   }
+
+  //   return Object.values(result)
+  // }, [rows])
+  // 🔵 สรุปเวลาการใช้รถ (แบบไม่ใช้เลขไมล์)
+  const aggregatedTime = useMemo(() => {
+    const map: Record<string, { plate: string; trips: number; totalMinutes: number }> = {}
+
+    for (const r of rows) {
+      if (!map[r.plate]) {
+        map[r.plate] = { plate: r.plate, trips: 0, totalMinutes: 0 }
+      }
+
+      // ทุกแถวคือ 1 ทริป
+      map[r.plate].trips += 1
+
+      // รวมเวลาตาม time_slot ถ้ามี
+      if (r.time_slot) {
+        const minutes = r.time_slot
+          .split(',')
+          .map(s => timeSlotToMinutes(s))
+          .reduce((a, b) => a + b, 0)
+        map[r.plate].totalMinutes += minutes
+      }
+    }
+
+    return Object.values(map).sort((a, b) => a.plate.localeCompare(b.plate, 'th'))
+  }, [rows])
+
+
+  const aggregatedTimeByDept = useMemo(() => {
+    const map: Record<string, { department: string; trips: number; totalMinutes: number }> = {}
+
+    for (const r of rows) {
+      const dept = r.department || '-'
+      if (!map[dept]) map[dept] = { department: dept, trips: 0, totalMinutes: 0 }
+
+      // ทริป = ทุกแถวใน rows
+      map[dept].trips += 1
+
+      // รวมเวลาจาก time_slot ถ้ามี
+      if (r.time_slot) {
+        const minutes = r.time_slot
+          .split(',')
+          .map(s => timeSlotToMinutes(s))
+          .reduce((a, b) => a + b, 0)
+        map[dept].totalMinutes += minutes
+      }
+    }
+
+    return Object.values(map)
+  }, [rows])
+
+
+
+
   // แปลงช่วงเวลา "HH:mm-HH:mm" เป็นจำนวนนาที
   function timeSlotToMinutes(slot: string): number {
     const [start, end] = slot.split('-').map(s => s.trim())
@@ -63,7 +186,7 @@ export default function ReportsPage() {
     setError(null)
     setLoading(true)
     try {
-      // คิดช่วงวันที่จาก mode
+      // ช่วงวันที่
       let from = toYYYYMMDD(start)
       let to = toYYYYMMDD(end)
 
@@ -76,37 +199,48 @@ export default function ReportsPage() {
         to = toYYYYMMDD(last)
       }
 
-      // ดึงข้อมูลจาก Supabase:
-      // miles -> (booking_id) -> bookings.date + cars.plate
-      // เลือกเฉพาะ record ที่มีการบันทึกไมล์ (total_mile อาจเป็น null ถ้าไม่ได้บันทึก)
-      const { data, error } = await supabase
-        .from('miles')
+      // โหลด bookings ทั้งหมด
+      const { data: bookingsRaw, error: bErr } = await supabase
+        .from('bookings')
         .select(`
-    total_mile,
-    bookings!inner (
-      date,
-      time_slot,
-      user_id,
-      cars!inner ( plate ),
-      profiles:user_id (
-        department
+        id,
+        date,
+        time_slot,
+        user_id,
+        cars!inner ( plate ),
+        profiles:user_id ( department )
+      `)
+        .gte('date', from)
+        .lte('date', to)
+
+      if (bErr) throw bErr
+
+      // โหลด miles ทั้งหมด
+      const { data: milesData, error: mErr } = await supabase
+        .from('miles')
+        .select(`booking_id, start_mile, end_mile, total_mile`)
+
+      if (mErr) throw mErr
+
+      // ทำ map miles
+      const milesMap = Object.fromEntries(
+        (milesData || []).map(m => [m.booking_id, m])
       )
-    )
-  `)
-        .gte('bookings.date', from)
-        .lte('bookings.date', to)
 
+      // รวม bookings + miles
+      const mapped: Row[] = (bookingsRaw || []).map(b => {
+        const m = milesMap[b.id] || null
 
-      if (error) throw error
-
-      const mapped: Row[] = (data || []).map((r: any) => ({
-        plate: r.bookings?.cars?.plate ?? '-',
-        date: r.bookings?.date ?? '',
-        total_mile: Number(r.total_mile ?? (r.end_mile ?? 0) - (r.start_mile ?? 0)),
-        department: r.bookings?.profiles?.department ?? '-',
-        time_slot: r.bookings?.time_slot ?? '',
-      }))
-
+        return {
+          plate: b.cars?.plate ?? '-',
+          date: b.date,
+          department: b.profiles?.department ?? '-',
+          time_slot: b.time_slot ?? '',
+          total_mile: m
+            ? (m.total_mile ?? (m.end_mile - m.start_mile))
+            : null,
+        }
+      })
 
       setRows(mapped)
     } catch (e: any) {
@@ -116,6 +250,12 @@ export default function ReportsPage() {
     }
   }
 
+  // ชุดข้อมูลที่มีการกรอกเลขไมล์
+  const rowsWithMile = useMemo(() => {
+    return rows.filter(r => r.total_mile !== null && !isNaN(r.total_mile))
+  }, [rows])
+
+
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,36 +263,34 @@ export default function ReportsPage() {
 
 
   // สรุปผลรวมต่อทะเบียน
-  const aggregated: AggRow[] = useMemo(() => {
+  const aggregated = useMemo(() => {
     const byPlate: Record<string, AggRow> = {}
-    for (const r of rows) {
+    for (const r of rowsWithMile) {
       if (!byPlate[r.plate]) byPlate[r.plate] = { plate: r.plate, trips: 0, totalKm: 0 }
       byPlate[r.plate].trips += 1
-      byPlate[r.plate].totalKm += Number.isFinite(r.total_mile) ? r.total_mile : 0
+      byPlate[r.plate].totalKm += r.total_mile || 0
     }
-    return Object.values(byPlate).sort((a, b) => a.plate.localeCompare(b.plate, 'th'))
-  }, [rows])
+    return Object.values(byPlate)
+  }, [rowsWithMile])
+
 
   const byDepartment = useMemo(() => {
     const dep: Record<string, { department: string; trips: number; totalKm: number; totalMinutes: number }> = {}
-    for (const r of rows) {
+    for (const r of rowsWithMile) {
       const key = r.department || '-'
       if (!dep[key]) dep[key] = { department: key, trips: 0, totalKm: 0, totalMinutes: 0 }
 
       dep[key].trips += 1
-      dep[key].totalKm += Number.isFinite(r.total_mile) ? r.total_mile : 0
+      dep[key].totalKm += r.total_mile || 0
 
-      // ✅ รวมเวลาจาก time_slot
       if (r.time_slot) {
-        const minutes = r.time_slot
-          .split(',')
-          .map(s => timeSlotToMinutes(s))
-          .reduce((a, b) => a + b, 0)
+        const minutes = r.time_slot.split(',').map(s => timeSlotToMinutes(s)).reduce((a, b) => a + b, 0)
         dep[key].totalMinutes += minutes
       }
     }
-    return Object.values(dep).sort((a, b) => a.department.localeCompare(b.department, 'th'))
-  }, [rows])
+    return Object.values(dep)
+  }, [rowsWithMile])
+
 
 
 
@@ -171,10 +309,11 @@ export default function ReportsPage() {
 
   // ดาวน์โหลด Excel
   const handleExportExcel = () => {
-    // ✅ 1. สร้าง workbook ก่อน
     const wb = XLSX.utils.book_new()
 
-    // ✅ 2. เตรียม sheet1: สรุปต่อทะเบียน
+    // ============================
+    // 1) Sheet: สรุปต่อทะเบียน (เฉพาะที่มีเลขไมล์)
+    // ============================
     const sheet1 = aggregated.map(a => ({
       'ทะเบียนรถ': a.plate,
       'จำนวนครั้งที่ใช้ (ทริป)': a.trips,
@@ -182,28 +321,59 @@ export default function ReportsPage() {
     }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet1), 'สรุปต่อทะเบียน')
 
-    // ✅ 3. เตรียม sheet2: รายการดิบ
-    const sheet2 = rows.map(r => ({
-      'วันที่': r.date,
-      'ทะเบียนรถ': r.plate,
-      'ระยะทาง (กม.)': r.total_mile,
-    }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet2), 'รายการดิบ')
-
-    // ✅ 4. ถ้ามี byDepartment → เพิ่ม sheet3
-    const sheet3 = byDepartment.map(d => ({
+    // ============================
+    // 2) Sheet: สรุปต่อแผนก (เฉพาะที่มีเลขไมล์)
+    // ============================
+    const sheet2 = byDepartment.map(d => ({
       'แผนก': d.department,
       'จำนวนครั้งที่ใช้ (ทริป)': d.trips,
       'รวมระยะทาง (กม.)': d.totalKm,
       'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes),
     }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet3), 'สรุปต่อแผนก')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet2), 'สรุปต่อแผนก')
 
-    // ✅ 5. แปลงและดาวน์โหลดไฟล์
+    // ============================
+    // 3) Sheet: รายการดิบ (เฉพาะที่มีเลขไมล์)
+    // ============================
+    const sheet3 = rowsWithMile.map(r => ({
+      'วันที่': r.date,
+      'ทะเบียนรถ': r.plate,
+      'ระยะทาง (กม.)': r.total_mile,
+      'แผนก': r.department,
+      'ช่วงเวลา': r.time_slot || '',
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet3), 'รายการดิบ')
+
+    // ============================
+    // 4) Sheet: สรุปเวลาต่อทะเบียน (รวมทุกทริป)
+    // ============================
+    const sheet4 = aggregatedTime.map(r => ({
+      'ทะเบียนรถ': r.plate,
+      'จำนวนทริปทั้งหมด': r.trips,
+      'เวลารวมทั้งหมด': formatMinutesToReadable(r.totalMinutes),
+      'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์',
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet4), 'สรุปเวลาต่อทะเบียน')
+
+    // ============================
+    // 5) Sheet: สรุปเวลาต่อแผนก (รวมทุกทริป)
+    // ============================
+    const sheet5 = aggregatedTimeByDept.map(d => ({
+      'แผนก': d.department,
+      'จำนวนทริปทั้งหมด': d.trips,
+      'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes),
+      'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์',
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet5), 'สรุปเวลาต่อแผนก')
+
+    // ============================
+    // Export
+    // ============================
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     saveAs(blob, `รายงานการใช้รถ_${rangeLabel}.xlsx`)
   }
+
 
 
   return (
@@ -283,6 +453,7 @@ export default function ReportsPage() {
               >
                 ดาวน์โหลด Excel
               </button>
+
             </div>
           </div>
 
@@ -360,6 +531,89 @@ export default function ReportsPage() {
             </div>
           </div>
 
+          {/* 🔵 สรุปเวลาการใช้รถ (แบบไม่ใช้เลขไมล์) */}
+          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
+            <div className="px-4 py-2 font-semibold text-white bg-purple-700">
+              สรุปเวลาการใช้รถ (ตามช่วงเวลาที่เลือก) — {rangeLabel}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm min-w-[700px]">
+                <thead className="bg-purple-100 text-purple-800">
+                  <tr>
+                    <th className="p-2 sm:p-3 text-left">ทะเบียนรถ</th>
+                    <th className="p-2 sm:p-3 text-center">จำนวนทริป</th>
+                    <th className="p-2 sm:p-3 text-right">เวลารวม</th>
+                    <th className="p-2 sm:p-3 text-right">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregatedTime.map((r) => (
+                    <tr key={r.plate} className="border-b hover:bg-purple-50">
+                      <td className="p-2 sm:p-3">{r.plate}</td>
+                      <td className="p-2 sm:p-3 text-center">{r.trips}</td>
+                      <td className="p-2 sm:p-3 text-right">
+                        {formatMinutesToReadable(r.totalMinutes)}
+                      </td>
+                      <td className="p-2 sm:p-3 text-right">
+                        (คำนวณจากช่วงเวลา — ไม่มีการกรอกเลขไมล์)
+                      </td>
+                    </tr>
+                  ))}
+                  {aggregatedTime.length === 0 && (
+                    <tr>
+                      <td className="p-3 text-center text-gray-500" colSpan={4}>
+                        ไม่พบข้อมูล
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 🔵 สรุปเวลาการใช้รถต่อแผนก (ไม่ใช้เลขไมล์) */}
+          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
+            <div className="px-4 py-2 font-semibold text-white bg-purple-700">
+              สรุปเวลาการใช้รถต่อแผนก (ตามช่วงเวลาเท่านั้น) — {rangeLabel}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm min-w-[700px]">
+                <thead className="bg-purple-100 text-purple-800">
+                  <tr>
+                    <th className="p-2 sm:p-3 text-left">แผนก</th>
+                    <th className="p-2 sm:p-3 text-center">จำนวนทริป</th>
+                    <th className="p-2 sm:p-3 text-right">เวลารวมทั้งหมด</th>
+                    <th className="p-2 sm:p-3 text-right">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregatedTimeByDept.map((r) => (
+                    <tr key={r.department} className="border-b hover:bg-purple-50">
+                      <td className="p-2 sm:p-3">{r.department}</td>
+                      <td className="p-2 sm:p-3 text-center">
+                        {r.trips.toLocaleString('th-TH')}
+                      </td>
+                      <td className="p-2 sm:p-3 text-right">
+                        {formatMinutesToReadable(r.totalMinutes)}
+                      </td>
+                      <td className="p-2 sm:p-3 text-gray-600 text-right">
+                        (คำนวณจากช่วงเวลา — ไม่มีการกรอกเลขไมล์)
+                      </td>
+                    </tr>
+                  ))}
+
+                  {aggregatedTimeByDept.length === 0 && (
+                    <tr>
+                      <td className="p-3 text-center text-gray-500" colSpan={4}>
+                        ไม่พบข้อมูล
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
 
           {/* รายการดิบ */}
           <div className="bg-white rounded-xl shadow overflow-hidden print:shadow-none">
@@ -376,7 +630,7 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows
+                  {rowsWithMile
                     .sort((a, b) => a.date.localeCompare(b.date))
                     .map((r, idx) => (
                       <tr key={`${r.plate}_${r.date}_${idx}`} className="border-b hover:bg-blue-50">
