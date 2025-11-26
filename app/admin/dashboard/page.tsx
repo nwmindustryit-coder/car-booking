@@ -157,7 +157,7 @@ export default function DashboardPage() {
 
 
     const monthKeys = [...new Set(rows.map(r => r.date.slice(0, 7)))]
-        .sort()   // "2025-01", "2025-02", ...
+        .sort()   // "2025-01", "2025-02", ... test
         .reverse(); // เอาใหม่สุดก่อน
 
     const last2 = monthKeys.slice(0, 2);  // [ล่าสุด, ก่อนหน้า]
