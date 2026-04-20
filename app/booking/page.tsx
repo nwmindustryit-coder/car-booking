@@ -40,6 +40,7 @@ export default function BookingPage() {
   const [bookingStatus, setBookingStatus] = useState<Record<string, string>>(
     {},
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const [serverTime, setServerTime] = useState<string | null>(null);
 
@@ -121,64 +122,75 @@ export default function BookingPage() {
     if (!form.car_id || selectedTimes.length === 0)
       return alert("กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง");
 
-    // เรียงลำดับช่วงเวลาที่เลือกไว้
-    const sortedTimes = [...selectedTimes].sort(
-      (a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b),
-    );
+    // ✅ เปิดโหลดดิ้ง
+    setIsSubmitting(true);
 
-    // ดึงช่วงแรกสุดและสุดท้าย
-    const firstSlot = sortedTimes[0];
-    const lastSlot = sortedTimes[sortedTimes.length - 1];
+    try {
+      // เรียงลำดับช่วงเวลาที่เลือกไว้
+      const sortedTimes = [...selectedTimes].sort(
+        (a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b),
+      );
 
-    // ✅ เก็บทุกช่วงเวลาไว้ในรูป string เช่น "08:00-10:00, 13:00-15:00"
-    const combinedSlot = selectedTimes.join(", ");
+      // ดึงช่วงแรกสุดและสุดท้าย
+      const firstSlot = sortedTimes[0];
+      const lastSlot = sortedTimes[sortedTimes.length - 1];
 
-    // ✅ insert ครั้งเดียว
-    const { error } = await supabase.from("bookings").insert({
-      user_id: user.id,
-      user_name: user.email,
-      car_id: form.car_id,
-      driver_name: form.driver_name,
-      date: date.toLocaleDateString("sv-SE"),
-      time_slot: combinedSlot,
-      destination: form.destination,
-      reason: form.reason,
-    });
+      // ✅ เก็บทุกช่วงเวลาไว้ในรูป string เช่น "08:00-10:00, 13:00-15:00"
+      const combinedSlot = selectedTimes.join(", ");
 
-    if (error) {
-      console.error(error);
-    } else {
-      // 🟢 ส่งแจ้งเตือน LINE Notify — เมื่อมีการจองใหม่
-      await fetch("/api/line/notify-booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // user_name: user.email,
-          driver_name: form.driver_name,
-          destination: form.destination,
-          time_slot: combinedSlot,
-          car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-          date: date.toLocaleDateString("sv-SE"),
-        }),
+      // ✅ insert ครั้งเดียว
+      const { error } = await supabase.from("bookings").insert({
+        user_id: user.id,
+        user_name: user.email,
+        car_id: form.car_id,
+        driver_name: form.driver_name,
+        date: date.toLocaleDateString("sv-SE"),
+        time_slot: combinedSlot,
+        destination: form.destination,
+        reason: form.reason,
       });
 
-      // 🔵 ส่งแจ้งเตือน Telegram (เพิ่มใหม่)
-      await fetch("/api/telegram/notify-booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_name: user.email,
-          driver_name: form.driver_name,
-          destination: form.destination,
-          time_slot: combinedSlot,
-          car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-          date: date.toLocaleDateString("sv-SE"),
-          reason: form.reason,
-        }),
-      });
+      if (error) {
+        console.error(error);
+      } else {
+        // 🟢 ส่งแจ้งเตือน LINE Notify — เมื่อมีการจองใหม่
+        await fetch("/api/line/notify-booking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // user_name: user.email,
+            driver_name: form.driver_name,
+            destination: form.destination,
+            time_slot: combinedSlot,
+            car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
+            date: date.toLocaleDateString("sv-SE"),
+          }),
+        });
 
-      alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`);
-      router.push("/");
+        // 🔵 ส่งแจ้งเตือน Telegram (เพิ่มใหม่)
+        await fetch("/api/telegram/notify-booking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_name: user.email,
+            driver_name: form.driver_name,
+            destination: form.destination,
+            time_slot: combinedSlot,
+            car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
+            date: date.toLocaleDateString("sv-SE"),
+            reason: form.reason,
+          }),
+        });
+
+        alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`);
+        router.push("/");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในระบบขัดข้อง โปรดลองอีกครั้ง");
+    } finally {
+      // ✅ ปิดโหลดดิ้ง (ทำงานเสมอไม่ว่าจะสำเร็จหรือ error)
+      setIsSubmitting(false);
     }
   };
 
@@ -305,9 +317,37 @@ export default function BookingPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2"
+                className="w-full bg-blue-600 text-white py-2 flex justify-center items-center gap-2"
+                disabled={isSubmitting} // ✅ ปิดการกดปุ่มถ้าโหลดอยู่
               >
-                บันทึกการจอง
+                {isSubmitting ? (
+                  <>
+                    {/* ไอคอน Spinner โหลดดิ้ง (Tailwind + SVG) */}
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
+                    </svg>
+                    กำลังประมวลผล...
+                  </>
+                ) : (
+                  "บันทึกการจอง"
+                )}
               </Button>
               {/* ปุ่มกลับ */}
               <Link href="/" className="block">
