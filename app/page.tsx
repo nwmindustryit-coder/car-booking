@@ -381,7 +381,7 @@ export default function Dashboard() {
         <div className="bg-red-600 text-white py-2 animate-pulse text-center font-semibold">
           {alerts.map((a, idx) => (
             <div key={idx}>
-              🔔 รถทะเบียน {a.plate} เหลืออีก {a.remain} กม. ถึงกำหนดเข้าศูนย์!
+              🔔 รถทะเบียน {a.plate} เหลืออีก {a.remain} กม. ถึงกำหนดเข้าศูนย์!!
             </div>
           ))}
         </div>
