@@ -388,14 +388,228 @@ export default function Dashboard() {
     <>
       {/* แจ้งเตือน */}
       {alerts.length > 0 && (
-        <div className="bg-red-600 text-white py-2 animate-pulse text-center font-semibold">
+        <div className="alert-container">
           {alerts.map((a, idx) => (
-            <div key={idx}>
-              🔔 รถทะเบียน {a.plate} เหลืออีก {a.remain} กม. ถึงกำหนดเข้าศูนย์!
+            <div
+              key={idx}
+              className="premium-alert"
+              style={{ animationDelay: `${idx * 0.1}s` }}
+            >
+              <div className="alert-content">
+                <div className="alert-icon">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="10" cy="10" r="9" className="ring-pulse" />
+                  </svg>
+                </div>
+                <div className="alert-text">
+                  <span className="alert-plate">รถทะเบียน {a.plate}</span>
+                  <span className="alert-message">
+                    เหลืออีก {a.remain} กม. ถึงกำหนดเข้าศูนย์
+                  </span>
+                </div>
+              </div>
+              <button
+                className="alert-close"
+                onClick={() => {
+                  const element =
+                    document.querySelectorAll(".premium-alert")[idx];
+                  element?.classList.add("removing");
+                  setTimeout(() => {
+                    // อัพเดท state ของคุณที่นี่ เช่น setAlerts(prev => prev.filter((_, i) => i !== idx))
+                  }, 400);
+                }}
+                aria-label="ปิดการแจ้งเตือน"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
       )}
+      <style jsx>{`
+  @keyframes slideInDown {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes ringPulse {
+    0%, 100% {
+      stroke-dasharray: 0 100;
+      opacity: 0.6;
+    }
+    50% {
+      stroke-dasharray: 50 100;
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .alert-container {
+    position: relative;
+  }
+
+  .premium-alert {
+    background: linear-gradient(135deg, #DC2626 0%, #EF4444 50%, #F87171 100%);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    animation: slideInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+      transparent, 
+      rgba(255, 255, 255, 0.2), 
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+    pointer-events: none;
+  }
+
+  .premium-alert:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4), 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .premium-alert.removing {
+    animation: fadeOut 0.4s cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+
+  .alert-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .alert-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    animation: pulseGlow 2s ease-in-out infinite;
+    backdrop-filter: blur(8px);
+    color: white;
+  }
+
+  .ring-pulse {
+    animation: ringPulse 2s ease-in-out infinite;
+  }
+
+  .alert-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: white;
+  }
+
+  .alert-plate {
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .alert-message {
+    font-size: 14px;
+    opacity: 0.95;
+    font-weight: 400;
+  }
+
+  .alert-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    backdrop-filter: blur(8px);
+  }
+
+  .alert-close:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: rotate(90deg) scale(1.1);
+  }
+
+  .alert-close:active {
+    transform: rotate(90deg) scale(0.95);
+  }
+`}</style>
       <Navbar />
       <div className="p-6">
         <main className="p-4 sm:p-6 max-w-6xl mx-auto">
@@ -594,8 +808,8 @@ export default function Dashboard() {
                                       <Button
                                         size="sm"
                                         variant="destructive"
-                                        onClick={() =>
-                                          handleDeleteBooking(b) // ✅ ส่งทั้งก้อน booking ไปยังฟังก์ชันลบ
+                                        onClick={
+                                          () => handleDeleteBooking(b) // ✅ ส่งทั้งก้อน booking ไปยังฟังก์ชันลบ
                                         }
                                       >
                                         🗑️
