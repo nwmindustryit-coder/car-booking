@@ -12,9 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GaugeIcon, EyeIcon } from "lucide-react";
+import { 
+  GaugeIcon, 
+  EyeIcon, 
+  Search, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  CalendarIcon, 
+  MapPinIcon, 
+  CarIcon, 
+  UserIcon 
+} from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-// import { Checkbox } from "@/components/ui/checkbox"
 import { format, isToday } from "date-fns";
 import { th } from "date-fns/locale";
 import DatePicker from "react-datepicker";
@@ -105,22 +115,22 @@ export default function Dashboard() {
   }, [editBooking]);
 
   // ✅ ฟังก์ชันแก้ไขการจอง
-  const handleEditBooking = async (booking: any) => {
-    const newDestination = prompt("แก้ไขสถานที่:", booking.destination);
-    if (newDestination === null) return;
+  // const handleEditBooking = async (booking: any) => {
+  //   const newDestination = prompt("แก้ไขสถานที่:", booking.destination);
+  //   if (newDestination === null) return;
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({ destination: newDestination })
-      .eq("id", booking.id)
-      .eq("user_id", user.id); // ✅ ป้องกันไม่ให้แก้ของคนอื่น
+  //   const { error } = await supabase
+  //     .from("bookings")
+  //     .update({ destination: newDestination })
+  //     .eq("id", booking.id)
+  //     .eq("user_id", user.id); // ✅ ป้องกันไม่ให้แก้ของคนอื่น
 
-    if (error) alert(error.message);
-    else {
-      alert("แก้ไขข้อมูลสำเร็จ");
-      loadBookings();
-    }
-  };
+  //   if (error) alert(error.message);
+  //   else {
+  //     alert("แก้ไขข้อมูลสำเร็จ");
+  //     loadBookings();
+  //   }
+  // };
 
   // ✅ ฟังก์ชันลบการจอง
   // ✅ 1. เปลี่ยนจากรับแค่ (bookingId: string) เป็นรับทั้งก้อน (booking: any)

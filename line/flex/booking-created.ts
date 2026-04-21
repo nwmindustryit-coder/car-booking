@@ -1,7 +1,7 @@
 import { FlexMessage } from "@line/bot-sdk";
 
 export function BookingCreatedFlex(data: any): FlexMessage {
-      const TIME_SLOTS = [
+  const TIME_SLOTS = [
     'ก่อนเวลางาน',
     '08:00-09:00',
     '09:01-10:00',
@@ -12,9 +12,9 @@ export function BookingCreatedFlex(data: any): FlexMessage {
     '15:01-16:00',
     '16:01-17:00',
     'หลังเวลางาน',
-    ]
+  ]
 
-    function mergeTimeSlots(timeSlotString: string): string {
+  function mergeTimeSlots(timeSlotString: string): string {
     if (!timeSlotString) return ''
     const slots = timeSlotString.split(',').map(s => s.trim())
     if (slots.length === 1) return slots[0]
@@ -69,6 +69,7 @@ export function BookingCreatedFlex(data: any): FlexMessage {
     // ✅ รวมข้อความแต่ละกลุ่มด้วยคำว่า "และ"
     return formattedGroups.join(' และ ')
   }
+
   return {
     type: "flex",
     altText: "🚗 มีการจองรถใหม่เข้ามา",
@@ -98,11 +99,13 @@ export function BookingCreatedFlex(data: any): FlexMessage {
             margin: "lg",
             spacing: "sm",
             contents: [
-            //   { type: "text", text: `👤 ผู้จอง: ${data.user_name}` },
+              // ถ้าอยากให้แสดงชื่อคนจองด้วย เอาคอมเมนต์บรรทัดล่างออกได้นะครับ
+              // { type: "text", text: `👤 ผู้จอง: ${data.user_name ? data.user_name.split('@')[0] : '-'}` }, 
               { type: "text", text: `🚘 ผู้ขับ: ${data.driver_name}` },
               { type: "text", text: `🔖 รถ: ${data.car_plate}` },
               { type: "text", text: `📅 วันที่: ${data.date}` },
-              { type: "text", text: `⏰ เวลา: ${data.time_slot}` },
+              // ✅ เรียกใช้ฟังก์ชัน mergeTimeSlots ตรงนี้ครับ
+              { type: "text", text: `⏰ เวลา: ${mergeTimeSlots(data.time_slot)}` },
               { type: "text", text: `📍 สถานที่: ${data.destination}` },
             ]
           }
