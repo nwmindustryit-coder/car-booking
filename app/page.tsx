@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
@@ -12,17 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  GaugeIcon, 
-  EyeIcon, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  CalendarIcon, 
-  MapPinIcon, 
-  CarIcon, 
-  UserIcon 
+import {
+  GaugeIcon,
+  EyeIcon,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  CalendarIcon,
+  MapPinIcon,
+  CarIcon,
+  UserIcon,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -50,6 +50,10 @@ export default function Dashboard() {
   const [editStartMile, setEditStartMile] = useState("");
   const [editEndMile, setEditEndMile] = useState("");
   const [alerts, setAlerts] = useState<any[]>([]);
+
+  // ✅ State สำหรับตัวกรองเดือน
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("all");
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -87,7 +91,7 @@ export default function Dashboard() {
     driver_name: "",
     destination: "",
     reason: "",
-    date: new Date(), // ✅ เพิ่มวันที่ที่จะแก้ไข
+    date: new Date(),
   });
 
   const router = useRouter();
@@ -114,30 +118,9 @@ export default function Dashboard() {
     }
   }, [editBooking]);
 
-  // ✅ ฟังก์ชันแก้ไขการจอง
-  // const handleEditBooking = async (booking: any) => {
-  //   const newDestination = prompt("แก้ไขสถานที่:", booking.destination);
-  //   if (newDestination === null) return;
-
-  //   const { error } = await supabase
-  //     .from("bookings")
-  //     .update({ destination: newDestination })
-  //     .eq("id", booking.id)
-  //     .eq("user_id", user.id); // ✅ ป้องกันไม่ให้แก้ของคนอื่น
-
-  //   if (error) alert(error.message);
-  //   else {
-  //     alert("แก้ไขข้อมูลสำเร็จ");
-  //     loadBookings();
-  //   }
-  // };
-
-  // ✅ ฟังก์ชันลบการจอง
-  // ✅ 1. เปลี่ยนจากรับแค่ (bookingId: string) เป็นรับทั้งก้อน (booking: any)
   const handleDeleteBooking = async (booking: any) => {
     if (!confirm("ต้องการลบรายการจองนี้หรือไม่?")) return;
 
-    // 🟢 ส่งแจ้งเตือน LINE ก่อนลบ
     await fetch("/api/line/notify-delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +133,6 @@ export default function Dashboard() {
       }),
     });
 
-    // ✅ 2. ส่งแจ้งเตือน Telegram ก่อนลบ (ตอนนี้ระบบจะรู้จัก booking.driver_name แล้ว)
     await fetch("/api/telegram/notify-delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -163,12 +145,11 @@ export default function Dashboard() {
       }),
     });
 
-    // ✅ 3. ทำการลบจริง (รวมโค้ดให้เหลือแค่อันเดียว และใช้ booking.id)
     const { error } = await supabase
       .from("bookings")
       .delete()
-      .eq("id", booking.id) // เปลี่ยนมาใช้ booking.id
-      .eq("user_id", user.id); // ป้องกันไม่ให้ลบของคนอื่น
+      .eq("id", booking.id)
+      .eq("user_id", user.id);
 
     if (error) alert(error.message);
     else {
@@ -205,7 +186,6 @@ export default function Dashboard() {
     const groups: number[][] = [];
     let currentGroup: number[] = [indexes[0]];
 
-    // ✅ จัดกลุ่มช่วงเวลาที่ต่อเนื่องกัน
     for (let i = 1; i < indexes.length; i++) {
       if (indexes[i] === indexes[i - 1] + 1) {
         currentGroup.push(indexes[i]);
@@ -216,37 +196,30 @@ export default function Dashboard() {
     }
     groups.push(currentGroup);
 
-    // ✅ แปลงแต่ละกลุ่มเป็นข้อความช่วงเวลา
     const formattedGroups = groups.map((group) => {
       const firstSlot = TIME_SLOTS[group[0]];
       const lastSlot = TIME_SLOTS[group[group.length - 1]];
 
-      // กรณีช่วงเดียว
       if (group.length === 1) return firstSlot;
 
-      // กรณีแรกคือ "ก่อนเวลางาน"
       if (firstSlot === "ก่อนเวลางาน") {
         const endTime = lastSlot.split("-").pop();
         return `ก่อนเวลางาน-${endTime}`;
       }
 
-      // กรณีท้ายคือ "หลังเวลางาน"
       if (lastSlot === "หลังเวลางาน") {
         const startTime = firstSlot.split("-")[0];
         return `${startTime}-หลังเวลางาน`;
       }
 
-      // กรณีทั่วไป
       const startTime = firstSlot.split("-")[0];
       const endTime = lastSlot.split("-").pop();
       return `${startTime}-${endTime}`;
     });
 
-    // ✅ รวมข้อความแต่ละกลุ่มด้วยคำว่า "และ"
     return formattedGroups.join(" และ ");
   }
 
-  // ✅ โหลดข้อมูลหลังจากที่ผู้ใช้ล็อกอินแล้ว
   useEffect(() => {
     const getUserAndLoad = async () => {
       const { data } = await supabase.auth.getUser();
@@ -305,7 +278,6 @@ export default function Dashboard() {
     setFilteredBookings(filtered);
   }, [search, bookings]);
 
-  // ✅ ตรวจสอบช่วงเวลาว่างเมื่อเปิด Dialog แก้ไข
   useEffect(() => {
     const checkBookingAvailability = async () => {
       if (!editBooking?.car_id || !editForm.date) return;
@@ -337,7 +309,6 @@ export default function Dashboard() {
     if (editBooking) checkBookingAvailability();
   }, [editBooking, editForm.date]);
 
-  // ✅ คำนวณระยะทาง
   useEffect(() => {
     if (startMile && endMile) {
       const total = Number(endMile) - Number(startMile);
@@ -345,14 +316,6 @@ export default function Dashboard() {
     } else setUsedMile(null);
   }, [startMile, endMile]);
 
-  const filtered = bookings.filter(
-    (b) =>
-      b.user_name?.toLowerCase().includes(search.toLowerCase()) ||
-      b.driver_name?.toLowerCase().includes(search.toLowerCase()) ||
-      b.cars?.plate?.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // ✅ ฟังก์ชันบันทึกไมล์
   const handleSaveMiles = async () => {
     if (!startMile || !endMile) return alert("กรุณากรอกเลขไมล์ให้ครบ");
     const total = Number(endMile) - Number(startMile);
@@ -371,11 +334,27 @@ export default function Dashboard() {
       setStartMile("");
       setEndMile("");
       setUsedMile(null);
-
-      // ✅ รีโหลดข้อมูลใหม่ (ไม่ต้องโหลดทั้งหน้า)
       await loadBookings();
     }
   };
+
+  // ✅ ย้าย availableMonths ขึ้นมาอยู่ด้านบนก่อน if (!user)
+  const availableMonths = useMemo(() => {
+    if (filteredBookings.length === 0) return [];
+
+    const monthsSet = new Set(
+      filteredBookings.map((b) => b.date.substring(0, 7)), // ดึงแค่ YYYY-MM
+    );
+
+    return Array.from(monthsSet).sort().reverse();
+  }, [filteredBookings]);
+
+  useEffect(() => {
+    if (availableMonths.length > 0 && !hasAutoSelected) {
+      setSelectedMonthFilter(availableMonths[0]);
+      setHasAutoSelected(true); // ล็อกไว้ว่าตั้งค่าแล้ว ครั้งต่อไปที่กด "ดูทั้งหมด" จะได้ไม่เด้งกลับ
+    }
+  }, [availableMonths, hasAutoSelected]);
 
   if (!user) {
     return (
@@ -445,7 +424,7 @@ export default function Dashboard() {
                     document.querySelectorAll(".premium-alert")[idx];
                   element?.classList.add("removing");
                   setTimeout(() => {
-                    // อัพเดท state ของคุณที่นี่ เช่น setAlerts(prev => prev.filter((_, i) => i !== idx))
+                    setAlerts((prev) => prev.filter((_, i) => i !== idx));
                   }, 400);
                 }}
                 aria-label="ปิดการแจ้งเตือน"
@@ -665,19 +644,66 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* ✅ ส่วนเลือกเดือน (Month Filter Tabs) - ดีไซน์เรียบๆ ตามของเดิม */}
+          {availableMonths.length > 0 && (
+            <div className="flex overflow-x-auto pb-2 mb-4 gap-2 scrollbar-hide">
+              <Button
+                variant={selectedMonthFilter === "all" ? "default" : "outline"}
+                className={
+                  selectedMonthFilter === "all"
+                    ? "bg-blue-700 text-white"
+                    : "text-gray-600"
+                }
+                onClick={() => setSelectedMonthFilter("all")}
+                size="sm"
+              >
+                ดูทั้งหมด
+              </Button>
+              {availableMonths.map((monthStr) => {
+                const [year, month] = monthStr.split("-");
+                const monthName = format(
+                  new Date(Number(year), Number(month) - 1),
+                  "MMMM yyyy",
+                  { locale: th },
+                );
+                const isSelected = selectedMonthFilter === monthStr;
+
+                return (
+                  <Button
+                    key={monthStr}
+                    variant={isSelected ? "default" : "outline"}
+                    className={
+                      isSelected ? "bg-blue-700 text-white" : "text-gray-600"
+                    }
+                    onClick={() => setSelectedMonthFilter(monthStr)}
+                    size="sm"
+                  >
+                    {monthName}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow overflow-hidden">
             {Object.entries(
-              filteredBookings.reduce(
-                (groups, booking) => {
-                  const date = new Date(booking.date)
-                    .toISOString()
-                    .split("T")[0]; // ✅ normalize วันที่
-                  if (!groups[date]) groups[date] = [];
-                  groups[date].push(booking);
-                  return groups;
-                },
-                {} as Record<string, any[]>,
-              ),
+              filteredBookings
+                // 1. กรองเฉพาะเดือนที่ถูกเลือก (ถ้าไม่เลือก "all")
+                .filter((booking) => {
+                  if (selectedMonthFilter === "all") return true;
+                  return booking.date.startsWith(selectedMonthFilter);
+                })
+                .reduce(
+                  (groups, booking) => {
+                    const date = new Date(booking.date)
+                      .toISOString()
+                      .split("T")[0]; // ✅ normalize วันที่
+                    if (!groups[date]) groups[date] = [];
+                    groups[date].push(booking);
+                    return groups;
+                  },
+                  {} as Record<string, any[]>,
+                ),
             )
               // ✅ เรียงจากวันใหม่ → เก่า
               .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
@@ -688,7 +714,7 @@ export default function Dashboard() {
                 const isEvenMonth = month % 2 === 0;
                 const canManage = group.some((b) => b.user_id === user.id);
 
-                // ✅ กำหนดสีพื้นหลังของหัวแต่ละเดือนสลับกัน
+                // ✅ กำหนดสีพื้นหลังของหัวแต่ละเดือนสลับกันตาม Original
                 const bgColor = isToday(d)
                   ? "bg-green-600"
                   : isEvenMonth
@@ -832,7 +858,7 @@ export default function Dashboard() {
                                           setSelectedEditTimes(
                                             b.time_slot
                                               .split(",")
-                                              .map((s) => s.trim()),
+                                              .map((s: string) => s.trim()),
                                           );
                                           setEditBooking(b);
                                         }}
@@ -1004,8 +1030,8 @@ export default function Dashboard() {
                       if (b.id === editBooking.id) return false; // ข้ามของตัวเอง
                       const booked = b.time_slot
                         .split(",")
-                        .map((s) => s.trim());
-                      return booked.some((slot) =>
+                        .map((s: string) => s.trim());
+                      return booked.some((slot: string) =>
                         selectedEditTimes.includes(slot),
                       );
                     });
