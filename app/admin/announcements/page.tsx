@@ -194,7 +194,6 @@ export default function AdminAnnouncements() {
               <label className="block text-sm font-medium text-slate-600 mb-1">เนื้อหาประกาศ (ฝั่ง User จะเห็นตามนี้เป๊ะๆ)</label>
               <div className="h-64">
                 <ReactQuill 
-                  ref={quillRef as any} 
                   theme="snow" 
                   value={form.content} 
                   onChange={(val) => setForm({ ...form, content: val })}
