@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 import {
   Dialog,
   DialogContent,
@@ -625,6 +626,7 @@ export default function Dashboard() {
         }
       `}</style>
       <Navbar />
+      <AnnouncementPopup />
       <div className="p-6">
         <main className="p-4 sm:p-6 max-w-6xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
