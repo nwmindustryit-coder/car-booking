@@ -5,13 +5,14 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { format, isToday } from "date-fns";
-import { th } from "date-fns/locale";
+import { 
+  ArrowLeft, CalendarDays, CarFront, User, MapPin, 
+  AlignLeft, CheckCircle2, Clock, CalendarCheck 
+} from "lucide-react";
 
 const TIME_SLOTS = [
   "ก่อนเวลางาน",
@@ -37,20 +38,16 @@ export default function BookingPage() {
     destination: "",
     reason: "",
   });
-  const [bookingStatus, setBookingStatus] = useState<Record<string, string>>(
-    {},
-  );
+  const [bookingStatus, setBookingStatus] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const [serverTime, setServerTime] = useState<string | null>(null);
 
-  // ✅ โหลดเวลาจากฝั่งเซิร์ฟเวอร์ Supabase
   useEffect(() => {
     const loadServerTime = async () => {
       const { data, error } = await supabase.rpc("get_server_time");
       if (error) console.error("Error fetching server time:", error);
       else if (data) {
-        // แปลงเวลามาให้อ่านง่ายขึ้น
         const localTime = new Date(data).toLocaleString();
         setServerTime(localTime);
       }
@@ -60,9 +57,7 @@ export default function BookingPage() {
 
   useEffect(() => {
     const init = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return router.push("/login");
       setUser(user);
 
@@ -72,12 +67,9 @@ export default function BookingPage() {
     init();
   }, [router]);
 
-  // ตรวจสอบว่าช่วงเวลาใดถูกจองแล้ว
   useEffect(() => {
     const checkBookings = async () => {
       if (!form.car_id || !date) return;
-
-      // ✅ ใช้ local date ไม่แปลงเป็น UTC
       const formattedDate = date.toLocaleDateString("sv-SE");
 
       const { data, error } = await supabase
@@ -94,7 +86,6 @@ export default function BookingPage() {
       const status: Record<string, string> = {};
       for (const slot of TIME_SLOTS) status[slot] = "ว่าง";
 
-      // ✅ mark เวลาที่ซ้ำว่าไม่ว่าง
       for (const booking of data || []) {
         const bookedSlots = booking.time_slot.split(",").map((s) => s.trim());
         for (const slot of TIME_SLOTS) {
@@ -103,7 +94,6 @@ export default function BookingPage() {
           }
         }
       }
-
       setBookingStatus(status);
     };
 
@@ -122,29 +112,20 @@ export default function BookingPage() {
     if (!form.car_id || selectedTimes.length === 0)
       return alert("กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง");
 
-    // ✅ เปิดโหลดดิ้ง
     setIsSubmitting(true);
 
     try {
-      // เรียงลำดับช่วงเวลาที่เลือกไว้
       const sortedTimes = [...selectedTimes].sort(
         (a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b),
       );
+      const combinedSlot = sortedTimes.join(", ");
 
-      // ดึงช่วงแรกสุดและสุดท้าย
-      const firstSlot = sortedTimes[0];
-      const lastSlot = sortedTimes[sortedTimes.length - 1];
-
-      // ✅ เก็บทุกช่วงเวลาไว้ในรูป string เช่น "08:00-10:00, 13:00-15:00"
-      const combinedSlot = selectedTimes.join(", ");
-
-      // ✅ insert ครั้งเดียว
       const { error } = await supabase.from("bookings").insert({
         user_id: user.id,
         user_name: user.email,
         car_id: form.car_id,
         driver_name: form.driver_name,
-        date: date.toLocaleDateString("sv-SE"),
+        date: date?.toLocaleDateString("sv-SE"),
         time_slot: combinedSlot,
         destination: form.destination,
         reason: form.reason,
@@ -153,21 +134,20 @@ export default function BookingPage() {
       if (error) {
         console.error(error);
       } else {
-        // 🟢 ส่งแจ้งเตือน LINE Notify — เมื่อมีการจองใหม่
+        // Line Notify
         await fetch("/api/line/notify-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            // user_name: user.email,
             driver_name: form.driver_name,
             destination: form.destination,
             time_slot: combinedSlot,
             car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-            date: date.toLocaleDateString("sv-SE"),
+            date: date?.toLocaleDateString("sv-SE"),
           }),
         });
 
-        // 🔵 ส่งแจ้งเตือน Telegram (เพิ่มใหม่)
+        // Telegram Notify
         await fetch("/api/telegram/notify-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -177,7 +157,7 @@ export default function BookingPage() {
             destination: form.destination,
             time_slot: combinedSlot,
             car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-            date: date.toLocaleDateString("sv-SE"),
+            date: date?.toLocaleDateString("sv-SE"),
             reason: form.reason,
           }),
         });
@@ -189,198 +169,218 @@ export default function BookingPage() {
       console.error(err);
       alert("เกิดข้อผิดพลาดในระบบขัดข้อง โปรดลองอีกครั้ง");
     } finally {
-      // ✅ ปิดโหลดดิ้ง (ทำงานเสมอไม่ว่าจะสำเร็จหรือ error)
       setIsSubmitting(false);
     }
   };
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen text-blue-600">
-        <svg
-          className="animate-spin h-8 w-8 mb-3 text-blue-500"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-        <p className="text-gray-500 animate-pulse">
-          กำลังตรวจสอบสิทธิ์ผู้ใช้...
-        </p>
+      <main className="flex flex-col items-center justify-center h-screen bg-slate-50">
+        <div className="p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center">
+          <Clock className="w-12 h-12 text-blue-500 animate-pulse mb-4" />
+          <p className="text-slate-600 font-medium text-lg">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-slate-50/50 pb-12">
       <Navbar />
-      <main className="p-6 max-w-2xl mx-auto space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>จองรถใหม่</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <label className="block text-sm font-medium">วันที่จอง</label>
-              <DatePicker
-                selected={date}
-                onChange={setDate}
-                className="border rounded-md p-2 w-full"
-                dateFormat="dd/MM/yyyy"
-              />
+      <main className="p-4 sm:p-6 max-w-3xl mx-auto mt-4">
+        
+        {/* Header Title */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+              <CalendarCheck className="w-8 h-8 text-blue-600" /> ทำรายการจองรถ
+            </h1>
+            <p className="text-slate-500 mt-1 text-sm sm:text-base">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการจองรถส่วนกลาง</p>
+          </div>
+        </div>
 
-              <label className="block text-sm font-medium">ทะเบียนรถ</label>
-              <select
-                className="w-full border p-2 rounded-md"
-                value={form.car_id}
-                onChange={(e) => setForm({ ...form, car_id: e.target.value })}
-                required
-              >
-                <option value="">-- เลือกรถ --</option>
-                {cars.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.plate}
-                  </option>
-                ))}
-              </select>
+        <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
+          <CardContent className="p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Row 1: วันที่ & เลือกรถ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">วันที่จอง</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                      <CalendarDays className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <DatePicker
+                      selected={date}
+                      onChange={setDate}
+                      className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 font-medium"
+                      dateFormat="dd/MM/yyyy"
+                    />
+                  </div>
+                </div>
 
-              <label className="block text-sm font-medium">ชื่อผู้ขับ</label>
-              <input
-                className="w-full border p-2 rounded-md"
-                value={form.driver_name}
-                onChange={(e) =>
-                  setForm({ ...form, driver_name: e.target.value })
-                }
-                required
-              />
-
-              <label className="block text-sm font-medium">เลือกช่วงเวลา</label>
-              <div className="grid grid-cols-2 gap-2">
-                {TIME_SLOTS.map((slot) => (
-                  <Button
-                    key={slot}
-                    type="button"
-                    variant={
-                      selectedTimes.includes(slot) ? "default" : "outline"
-                    }
-                    onClick={() => toggleTimeSlot(slot)}
-                    disabled={
-                      bookingStatus[slot] && bookingStatus[slot] !== "ว่าง"
-                    }
-                  >
-                    {slot}{" "}
-                    {bookingStatus[slot] ? (
-                      bookingStatus[slot] === "ว่าง" ? (
-                        <Badge className="ml-2 bg-green-500">ว่าง</Badge>
-                      ) : (
-                        <Badge className="ml-2 bg-red-500">
-                          {bookingStatus[slot]}
-                        </Badge>
-                      )
-                    ) : (
-                      ""
-                    )}
-                  </Button>
-                ))}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">ทะเบียนรถ</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <CarFront className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <select
+                      className="w-full pl-10 pr-10 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 font-medium appearance-none"
+                      value={form.car_id}
+                      onChange={(e) => setForm({ ...form, car_id: e.target.value })}
+                      required
+                    >
+                      <option value="" disabled>-- เลือกรถที่ต้องการ --</option>
+                      {cars.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.plate} {c.brand ? `(${c.brand})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">▼</div>
+                  </div>
+                </div>
               </div>
 
-              <label className="block text-sm font-medium">สถานที่</label>
-              <input
-                className="w-full border p-2 rounded-md"
-                value={form.destination}
-                onChange={(e) =>
-                  setForm({ ...form, destination: e.target.value })
-                }
-                required
-              />
+              {/* ชื่อผู้ขับ */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">ชื่อผู้ขับ</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    placeholder="ระบุชื่อ-นามสกุล หรือชื่อเล่นผู้ขับ"
+                    className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                    value={form.driver_name}
+                    onChange={(e) => setForm({ ...form, driver_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
 
-              <label className="block text-sm font-medium">เหตุผล</label>
-              <textarea
-                className="w-full border p-2 rounded-md"
-                value={form.reason}
-                onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                required
-              ></textarea>
-
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 flex justify-center items-center gap-2"
-                disabled={isSubmitting} // ✅ ปิดการกดปุ่มถ้าโหลดอยู่
-              >
-                {isSubmitting ? (
-                  <>
-                    {/* ไอคอน Spinner โหลดดิ้ง (Tailwind + SVG) */}
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                      ></path>
-                    </svg>
-                    กำลังประมวลผล...
-                  </>
+              {/* เลือกช่วงเวลา */}
+              <div className="space-y-3 pt-2">
+                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" /> เลือกช่วงเวลา <span className="text-slate-400 font-normal text-xs">(เลือกได้มากกว่า 1 ช่วง)</span>
+                </label>
+                
+                {!form.car_id ? (
+                  <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-slate-500 text-sm">
+                    กรุณาเลือกรถเพื่อดูช่วงเวลาที่ว่าง
+                  </div>
                 ) : (
-                  "บันทึกการจอง"
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {TIME_SLOTS.map((slot) => {
+                      const isBooked = bookingStatus[slot] && bookingStatus[slot] !== "ว่าง";
+                      const isSelected = selectedTimes.includes(slot);
+
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => toggleTimeSlot(slot)}
+                          disabled={isBooked}
+                          className={`
+                            relative p-3 rounded-xl border text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1
+                            ${isBooked 
+                              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-70' 
+                              : isSelected 
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-md transform scale-[1.02]' 
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50'
+                            }
+                          `}
+                        >
+                          <span>{slot}</span>
+                          {isBooked ? (
+                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full mt-1 line-clamp-1 w-full text-center truncate">
+                              จองแล้ว: {bookingStatus[slot]}
+                            </span>
+                          ) : isSelected ? (
+                            <CheckCircle2 className="w-4 h-4 absolute top-2 right-2 opacity-80" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </Button>
-              {/* ปุ่มกลับ */}
-              <Link href="/" className="block">
+              </div>
+
+              {/* สถานที่ & เหตุผล */}
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">สถานที่ไป</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MapPin className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      placeholder="ระบุสถานที่ปลายทาง"
+                      className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                      value={form.destination}
+                      onChange={(e) => setForm({ ...form, destination: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">เหตุผลการจอง</label>
+                  <div className="relative">
+                    <div className="absolute top-3 left-3 pointer-events-none">
+                      <AlignLeft className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <textarea
+                      placeholder="ระบุรายละเอียดหรือเหตุผลการใช้งาน"
+                      rows={3}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 resize-none"
+                      value={form.reason}
+                      onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 space-y-3">
                 <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2 border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-800 transition"
+                  type="submit"
+                  className="w-full h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"
+                  disabled={isSubmitting}
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  กลับหน้าหลัก
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                      กำลังประมวลผลการจอง...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" /> ยืนยันการจองรถ
+                    </div>
+                  )}
                 </Button>
-              </Link>
+                
+                <Link href="/" className="block">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-all"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" /> ยกเลิกและกลับหน้าหลัก
+                  </Button>
+                </Link>
+              </div>
+
             </form>
           </CardContent>
         </Card>
-        {/* ✅ Debug: แสดง timezone ทั้งฝั่งเครื่องและเซิร์ฟเวอร์ */}
-        {/* <div className="mt-8 p-4 bg-gray-50 border rounded-lg text-sm text-gray-700 space-y-1">
-                    <p><b>🕒 Timezone Debug</b></p>
-                    <p>🌍 <b>เวลาปัจจุบัน (เครื่องผู้ใช้):</b> {new Date().toLocaleString()}</p>
-                    <p>🧭 <b>Time Zone (เครื่องผู้ใช้):</b> {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
-                    <p>🗓 <b>วันที่ Local ที่ใช้ในการจอง:</b> {date?.toLocaleDateString('sv-SE')}</p>
-                    <p>💾 <b>วันที่ ISO (UTC):</b> {date?.toISOString()}</p>
-
-                    {serverTime ? (
-                        <>
-                            <hr className="my-2" />
-                            <p>🖥 <b>เวลาฝั่งเซิร์ฟเวอร์ Supabase:</b> {serverTime}</p>
-                        </>
-                    ) : (
-                        <p className="italic text-gray-400">กำลังโหลดเวลาจากเซิร์ฟเวอร์...</p>
-                    )}
-                </div> */}
       </main>
-    </>
+    </div>
   );
 }
