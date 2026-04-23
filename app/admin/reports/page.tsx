@@ -8,7 +8,18 @@ import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-
+import { 
+  FileSpreadsheet, 
+  Printer, 
+  CalendarRange, 
+  CalendarDays, 
+  CarFront, 
+  Building2, 
+  Clock, 
+  Route, 
+  BarChart3,
+  RefreshCw
+} from 'lucide-react'
 
 type Row = {
   plate: string
@@ -34,132 +45,35 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
 
-  // 🔵 สรุปเวลาการใช้รถ "ต่อแผนก" (ไม่ใช้เลขไมล์)
-  // const aggregatedTimeByDept = useMemo(() => {
-  //   const map: Record<string, { department: string; trips: number; totalMinutes: number }> = {}
-
-  //   for (const r of rows) {
-  //     const dept = r.department || '-'
-  //     if (!map[dept]) {
-  //       map[dept] = { department: dept, trips: 0, totalMinutes: 0 }
-  //     }
-
-  //     // ถ้าไม่มี time_slot ข้ามไป
-  //     if (!r.time_slot) continue
-
-  //     const minutes = r.time_slot
-  //       .split(',')
-  //       .map(s => timeSlotToMinutes(s))
-  //       .reduce((a, b) => a + b, 0)
-
-  //     map[dept].trips += 1
-  //     map[dept].totalMinutes += minutes
-  //   }
-
-  //   return Object.values(map)
-  //     .sort((a, b) => a.department.localeCompare(b.department, 'th'))
-  // }, [rows])
-
-
-  // 🔵 สรุปเวลาต่อทะเบียน (แบบไม่ใช้เลขไมล์)
-  // const aggregatedTime = useMemo(() => {
-  //   const map: Record<string, { plate: string; trips: number; totalMinutes: number }> = {}
-
-  //   for (const r of rows) {
-  //     if (!r.time_slot) continue
-
-  //     if (!map[r.plate]) {
-  //       map[r.plate] = { plate: r.plate, trips: 0, totalMinutes: 0 }
-  //     }
-
-  //     const minutes = r.time_slot
-  //       .split(',')
-  //       .map(s => timeSlotToMinutes(s))
-  //       .reduce((a, b) => a + b, 0)
-
-  //     map[r.plate].trips += 1
-  //     map[r.plate].totalMinutes += minutes
-  //   }
-
-  //   return Object.values(map)
-  //     .sort((a, b) => a.plate.localeCompare(b.plate, 'th'))
-  // }, [rows])
-
-  // สรุปต่อทะเบียน (รวมทุกทริป)
-  // const aggregated = useMemo(() => {
-  //   const result: Record<string, AggRow> = {}
-
-  //   for (const r of rows) {
-  //     if (!result[r.plate]) {
-  //       result[r.plate] = { plate: r.plate, trips: 0, totalKm: 0 }
-  //     }
-
-  //     // ทุกแถวคือ 1 ทริป
-  //     result[r.plate].trips += 1
-
-  //     // ถ้ามีไมล์ → เพิ่ม km
-  //     if (Number.isFinite(r.total_mile)) {
-  //       result[r.plate].totalKm += r.total_mile
-  //     }
-  //   }
-
-  //   return Object.values(result)
-  // }, [rows])
   // 🔵 สรุปเวลาการใช้รถ (แบบไม่ใช้เลขไมล์)
   const aggregatedTime = useMemo(() => {
     const map: Record<string, { plate: string; trips: number; totalMinutes: number }> = {}
-
     for (const r of rows) {
-      if (!map[r.plate]) {
-        map[r.plate] = { plate: r.plate, trips: 0, totalMinutes: 0 }
-      }
-
-      // ทุกแถวคือ 1 ทริป
+      if (!map[r.plate]) map[r.plate] = { plate: r.plate, trips: 0, totalMinutes: 0 }
       map[r.plate].trips += 1
-
-      // รวมเวลาตาม time_slot ถ้ามี
       if (r.time_slot) {
-        const minutes = r.time_slot
-          .split(',')
-          .map(s => timeSlotToMinutes(s))
-          .reduce((a, b) => a + b, 0)
+        const minutes = r.time_slot.split(',').map(s => timeSlotToMinutes(s)).reduce((a, b) => a + b, 0)
         map[r.plate].totalMinutes += minutes
       }
     }
-
     return Object.values(map).sort((a, b) => a.plate.localeCompare(b.plate, 'th'))
   }, [rows])
 
-
   const aggregatedTimeByDept = useMemo(() => {
     const map: Record<string, { department: string; trips: number; totalMinutes: number }> = {}
-
     for (const r of rows) {
       const dept = r.department || '-'
       if (!map[dept]) map[dept] = { department: dept, trips: 0, totalMinutes: 0 }
-
-      // ทริป = ทุกแถวใน rows
       map[dept].trips += 1
-
-      // รวมเวลาจาก time_slot ถ้ามี
       if (r.time_slot) {
-        const minutes = r.time_slot
-          .split(',')
-          .map(s => timeSlotToMinutes(s))
-          .reduce((a, b) => a + b, 0)
+        const minutes = r.time_slot.split(',').map(s => timeSlotToMinutes(s)).reduce((a, b) => a + b, 0)
         map[dept].totalMinutes += minutes
       }
     }
-
     return Object.values(map)
   }, [rows])
 
-
-
-
-  // แปลงช่วงเวลา "HH:mm-HH:mm" เป็นจำนวนนาที
   function timeSlotToMinutes(slot: string): number {
     const [start, end] = slot.split('-').map(s => s.trim())
     if (!start || !end) return 0
@@ -168,7 +82,6 @@ export default function ReportsPage() {
     return (h2 * 60 + m2) - (h1 * 60 + m1)
   }
 
-  // แปลงจำนวนนาทีรวมทั้งหมด → เป็นข้อความ "x วัน y ชม. z นาที"
   function formatMinutesToReadable(totalMinutes: number): string {
     const days = Math.floor(totalMinutes / (60 * 24))
     const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
@@ -180,13 +93,10 @@ export default function ReportsPage() {
     return parts.join(' ') || '0 นาที'
   }
 
-
-  // โหลดข้อมูลตาม filter
   const load = async () => {
     setError(null)
     setLoading(true)
     try {
-      // ช่วงวันที่
       let from = toYYYYMMDD(start)
       let to = toYYYYMMDD(end)
 
@@ -199,47 +109,30 @@ export default function ReportsPage() {
         to = toYYYYMMDD(last)
       }
 
-      // โหลด bookings ทั้งหมด
       const { data: bookingsRaw, error: bErr } = await supabase
         .from('bookings')
-        .select(`
-        id,
-        date,
-        time_slot,
-        user_id,
-        cars!inner ( plate ),
-        profiles:user_id ( department )
-      `)
+        .select(`id, date, time_slot, user_id, cars!inner ( plate ), profiles:user_id ( department )`)
         .gte('date', from)
         .lte('date', to)
 
       if (bErr) throw bErr
 
-      // โหลด miles ทั้งหมด
       const { data: milesData, error: mErr } = await supabase
         .from('miles')
         .select(`booking_id, start_mile, end_mile, total_mile`)
 
       if (mErr) throw mErr
 
-      // ทำ map miles
-      const milesMap = Object.fromEntries(
-        (milesData || []).map(m => [m.booking_id, m])
-      )
+      const milesMap = Object.fromEntries((milesData || []).map(m => [m.booking_id, m]))
 
-      // รวม bookings + miles
       const mapped: Row[] = (bookingsRaw || []).map((b: any) => {
         const m = milesMap[b.id] || null
-
-        // plate — ปลอดภัยทุกกรณี
         const plate = (() => {
           const c: any = b.cars
           if (!c) return '-'
           if (Array.isArray(c)) return c[0]?.plate ?? '-'
           return c.plate ?? '-'
         })()
-
-        // department — ปลอดภัยทุกกรณี
         const dept = (() => {
           const p: any = b.profiles
           if (!p) return '-'
@@ -252,12 +145,9 @@ export default function ReportsPage() {
           date: b.date,
           department: dept,
           time_slot: b.time_slot ?? '',
-          total_mile: m
-            ? (m.total_mile ?? (m.end_mile - m.start_mile))
-            : null,
+          total_mile: m ? (m.total_mile ?? (m.end_mile - m.start_mile)) : null,
         }
       })
-
 
       setRows(mapped)
     } catch (e: any) {
@@ -267,19 +157,12 @@ export default function ReportsPage() {
     }
   }
 
-  // ชุดข้อมูลที่มีการกรอกเลขไมล์
-  const rowsWithMile = useMemo(() => {
-    return rows.filter(r => r.total_mile !== null && !isNaN(r.total_mile))
-  }, [rows])
-
+  const rowsWithMile = useMemo(() => rows.filter(r => r.total_mile !== null && !isNaN(r.total_mile)), [rows])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-
-  // สรุปผลรวมต่อทะเบียน
   const aggregated = useMemo(() => {
     const byPlate: Record<string, AggRow> = {}
     for (const r of rowsWithMile) {
@@ -290,16 +173,13 @@ export default function ReportsPage() {
     return Object.values(byPlate)
   }, [rowsWithMile])
 
-
   const byDepartment = useMemo(() => {
     const dep: Record<string, { department: string; trips: number; totalKm: number; totalMinutes: number }> = {}
     for (const r of rowsWithMile) {
       const key = r.department || '-'
       if (!dep[key]) dep[key] = { department: key, trips: 0, totalKm: 0, totalMinutes: 0 }
-
       dep[key].trips += 1
       dep[key].totalKm += r.total_mile || 0
-
       if (r.time_slot) {
         const minutes = r.time_slot.split(',').map(s => timeSlotToMinutes(s)).reduce((a, b) => a + b, 0)
         dep[key].totalMinutes += minutes
@@ -308,377 +188,352 @@ export default function ReportsPage() {
     return Object.values(dep)
   }, [rowsWithMile])
 
-
-
-
-  // ชื่อช่วงวันที่/เดือน เพื่อแสดงหัวรายงาน + ตั้งชื่อไฟล์
   const rangeLabel = useMemo(() => {
-    if (mode === 'month') {
-      return format(month, 'MMMM yyyy', { locale: th })
-    }
+    if (mode === 'month') return format(month, 'MMMM yyyy', { locale: th })
     return `${format(start, 'dd MMM yyyy', { locale: th })} - ${format(end, 'dd MMM yyyy', { locale: th })}`
   }, [mode, month, start, end])
 
-  // พิมพ์ (ใช้ CSS สื่อสารด้วย @media print)
-  const handlePrint = () => {
-    window.print()
-  }
+  // KPIs
+  const totalTrips = rows.length
+  const totalKm = aggregated.reduce((sum, r) => sum + r.totalKm, 0)
+  const totalMinutes = aggregatedTime.reduce((sum, r) => sum + r.totalMinutes, 0)
 
-  // ดาวน์โหลด Excel
+  const handlePrint = () => window.print()
+
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new()
-
-    // ============================
-    // 1) Sheet: สรุปต่อทะเบียน (เฉพาะที่มีเลขไมล์)
-    // ============================
-    const sheet1 = aggregated.map(a => ({
-      'ทะเบียนรถ': a.plate,
-      'จำนวนครั้งที่ใช้ (ทริป)': a.trips,
-      'รวมระยะทาง (กม.)': a.totalKm,
-    }))
+    const sheet1 = aggregated.map(a => ({ 'ทะเบียนรถ': a.plate, 'จำนวนครั้งที่ใช้ (ทริป)': a.trips, 'รวมระยะทาง (กม.)': a.totalKm }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet1), 'สรุปต่อทะเบียน')
-
-    // ============================
-    // 2) Sheet: สรุปต่อแผนก (เฉพาะที่มีเลขไมล์)
-    // ============================
-    const sheet2 = byDepartment.map(d => ({
-      'แผนก': d.department,
-      'จำนวนครั้งที่ใช้ (ทริป)': d.trips,
-      'รวมระยะทาง (กม.)': d.totalKm,
-      'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes),
-    }))
+    const sheet2 = byDepartment.map(d => ({ 'แผนก': d.department, 'จำนวนครั้งที่ใช้ (ทริป)': d.trips, 'รวมระยะทาง (กม.)': d.totalKm, 'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes) }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet2), 'สรุปต่อแผนก')
-
-    // ============================
-    // 3) Sheet: รายการดิบ (เฉพาะที่มีเลขไมล์)
-    // ============================
-    const sheet3 = rowsWithMile.map(r => ({
-      'วันที่': r.date,
-      'ทะเบียนรถ': r.plate,
-      'ระยะทาง (กม.)': r.total_mile,
-      'แผนก': r.department,
-      'ช่วงเวลา': r.time_slot || '',
-    }))
+    const sheet3 = rowsWithMile.map(r => ({ 'วันที่': r.date, 'ทะเบียนรถ': r.plate, 'ระยะทาง (กม.)': r.total_mile, 'แผนก': r.department, 'ช่วงเวลา': r.time_slot || '' }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet3), 'รายการดิบ')
-
-    // ============================
-    // 4) Sheet: สรุปเวลาต่อทะเบียน (รวมทุกทริป)
-    // ============================
-    const sheet4 = aggregatedTime.map(r => ({
-      'ทะเบียนรถ': r.plate,
-      'จำนวนทริปทั้งหมด': r.trips,
-      'เวลารวมทั้งหมด': formatMinutesToReadable(r.totalMinutes),
-      'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์',
-    }))
+    const sheet4 = aggregatedTime.map(r => ({ 'ทะเบียนรถ': r.plate, 'จำนวนทริปทั้งหมด': r.trips, 'เวลารวมทั้งหมด': formatMinutesToReadable(r.totalMinutes), 'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์' }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet4), 'สรุปเวลาต่อทะเบียน')
-
-    // ============================
-    // 5) Sheet: สรุปเวลาต่อแผนก (รวมทุกทริป)
-    // ============================
-    const sheet5 = aggregatedTimeByDept.map(d => ({
-      'แผนก': d.department,
-      'จำนวนทริปทั้งหมด': d.trips,
-      'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes),
-      'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์',
-    }))
+    const sheet5 = aggregatedTimeByDept.map(d => ({ 'แผนก': d.department, 'จำนวนทริปทั้งหมด': d.trips, 'เวลารวมทั้งหมด': formatMinutesToReadable(d.totalMinutes), 'หมายเหตุ': 'คำนวณตามช่วงเวลา — ไม่อิงเลขไมล์' }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet5), 'สรุปเวลาต่อแผนก')
 
-    // ============================
-    // Export
-    // ============================
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
     const blob = new Blob([wbout], { type: 'application/octet-stream' })
     saveAs(blob, `รายงานการใช้รถ_${rangeLabel}.xlsx`)
   }
 
-
-
   return (
-    <>
-      <div className="p-4">
-        <Navbar />
-        <main className="p-4 sm:p-6 max-w-6xl mx-auto print:p-0">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between  gap-3 mb-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-blue-700">รายงานการใช้รถ</h1>
-              <p className="text-sm text-gray-500">ช่วง: {rangeLabel}</p>
+    <div className="min-h-screen bg-slate-50/50 pb-12">
+      <Navbar />
+      <main className="p-4 sm:p-6 max-w-7xl mx-auto print:p-0 mt-4">
+        
+        {/* Header & Filters */}
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-8 print:hidden">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-blue-600 rounded-xl shadow-sm text-white">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">รายงานสถิติการใช้รถ</h1>
+            </div>
+            <p className="text-slate-500 font-medium ml-14">ช่วงเวลา: <span className="text-blue-600">{rangeLabel}</span></p>
+          </div>
+
+          <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap lg:flex-nowrap items-center gap-3 w-full xl:w-auto">
+            
+            {/* โหมดตัวกรอง */}
+            <div className="bg-slate-100 p-1 rounded-xl flex gap-1 items-center w-full sm:w-auto">
+              <button
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'month' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => setMode('month')}
+              >
+                <CalendarDays className="w-4 h-4"/> รายเดือน
+              </button>
+              <button
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'range' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                onClick={() => setMode('range')}
+              >
+                <CalendarRange className="w-4 h-4"/> ช่วงวันที่
+              </button>
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
-              {/* สลับโหมด เดือน / ช่วงวันที่ */}
-              <div className="border rounded-lg overflow-hidden flex">
-                <button
-                  className={`px-3 py-1 text-sm ${mode === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600'}`}
-                  onClick={() => setMode('month')}
-                >
-                  รายเดือน
-                </button>
-                <button
-                  className={`px-3 py-1 text-sm ${mode === 'range' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600'}`}
-                  onClick={() => setMode('range')}
-                >
-                  ช่วงวันที่
-                </button>
-              </div>
-
-              {/* ตัวเลือกเดือน หรือ วัน */}
+            {/* Date Pickers */}
+            <div className="flex-1 sm:flex-none flex items-center gap-2 px-2">
               {mode === 'month' ? (
                 <DatePicker
                   selected={month}
                   onChange={(d: Date | null) => d && setMonth(d)}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
-                  className="border rounded-md p-2 text-sm"
+                  className="w-[160px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
                 />
               ) : (
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <DatePicker
                     selected={start}
                     onChange={(d: Date | null) => d && setStart(d)}
                     dateFormat="dd/MM/yyyy"
-                    className="border rounded-md p-2 text-sm"
+                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
                   />
-                  <span className="self-center text-sm">ถึง</span>
+                  <span className="text-slate-400 font-medium">-</span>
                   <DatePicker
                     selected={end}
                     onChange={(d: Date | null) => d && setEnd(d)}
                     dateFormat="dd/MM/yyyy"
-                    className="border rounded-md p-2 text-sm"
+                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
                   />
                 </div>
               )}
+            </div>
 
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 w-full sm:w-auto px-1 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-3">
               <button
                 onClick={load}
-                className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
                 disabled={loading}
+                className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center gap-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition-colors disabled:opacity-50"
               >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'กำลังโหลด...' : 'ดึงข้อมูล'}
               </button>
-
-              <button
-                onClick={handlePrint}
-                className="px-3 py-2 bg-white text-blue-600 border rounded-md text-sm hover:bg-blue-50"
-              >
-                พิมพ์รายงาน
+              
+              <button onClick={handlePrint} className="h-10 w-10 flex items-center justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 rounded-xl transition-colors" title="พิมพ์รายงาน">
+                <Printer className="w-4 h-4" />
               </button>
 
               <button
                 onClick={handleExportExcel}
-                className="px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                 disabled={aggregated.length === 0}
+                className="h-10 px-4 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale"
+                title="ดาวน์โหลดไฟล์ Excel"
               >
-                ดาวน์โหลด Excel
+                <FileSpreadsheet className="w-4 h-4" /> Excel
               </button>
-
             </div>
+
           </div>
+        </div>
 
-          {error && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in">
+            ⚠️ {error}
+          </div>
+        )}
 
-          {/* สรุปต่อทะเบียน */}
-          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
-            <div className="px-4 py-2 font-semibold text-white bg-[#2f3195]">
-              สรุปการใช้รถต่อทะเบียน ({rangeLabel})
+        {/* 📊 KPI Cards Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 print:hidden">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+             <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                <Route className="w-6 h-6"/>
+             </div>
+             <div>
+                <p className="text-sm font-medium text-slate-500">จำนวนทริปทั้งหมด</p>
+                <h3 className="text-2xl font-bold text-slate-800">{totalTrips.toLocaleString('th-TH')} <span className="text-sm font-medium text-slate-400">ครั้ง</span></h3>
+             </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+             <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <CarFront className="w-6 h-6"/>
+             </div>
+             <div>
+                <p className="text-sm font-medium text-slate-500">รวมระยะทางขับขี่ (ที่บันทึกไมล์)</p>
+                <h3 className="text-2xl font-bold text-slate-800">{totalKm.toLocaleString('th-TH')} <span className="text-sm font-medium text-slate-400">กม.</span></h3>
+             </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+             <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                <Clock className="w-6 h-6"/>
+             </div>
+             <div>
+                <p className="text-sm font-medium text-slate-500">รวมเวลาการใช้รถ</p>
+                <h3 className="text-xl font-bold text-slate-800">{formatMinutesToReadable(totalMinutes)}</h3>
+             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:block print:space-y-8">
+          
+          {/* ตารางที่ 1: สรุปต่อทะเบียน */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+              <CarFront className="w-5 h-5 text-blue-600"/>
+              <h2 className="font-bold text-slate-800">สรุปการใช้รถต่อทะเบียน (บันทึกไมล์)</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                <thead className="bg-blue-100 text-blue-800">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600 font-medium">
                   <tr>
-                    <th className="p-2 sm:p-3 text-left">ทะเบียนรถ</th>
-                    <th className="p-2 sm:p-3 text-right">จำนวนทริป</th>
-                    <th className="p-2 sm:p-3 text-right">รวมระยะทาง (กม.)</th>
+                    <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
+                    <th className="px-5 py-3 text-right">จำนวนทริป</th>
+                    <th className="px-5 py-3 text-right">รวมระยะทาง</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {aggregated.map((r) => (
-                    <tr key={r.plate} className="border-b hover:bg-blue-50">
-                      <td className="p-2 sm:p-3">{r.plate}</td>
-                      <td className="p-2 sm:p-3 text-right">{r.trips.toLocaleString('th-TH')}</td>
-                      <td className="p-2 sm:p-3 text-right">{r.totalKm.toLocaleString('th-TH')}</td>
+                    <tr key={r.plate} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3 font-medium">{r.plate}</td>
+                      <td className="px-5 py-3 text-right font-mono">{r.trips.toLocaleString('th-TH')}</td>
+                      <td className="px-5 py-3 text-right font-mono text-emerald-600 font-medium">{r.totalKm.toLocaleString('th-TH')} กม.</td>
                     </tr>
                   ))}
                   {aggregated.length === 0 && (
-                    <tr>
-                      <td className="p-3 text-center text-gray-500" colSpan={3}>ไม่พบข้อมูล</td>
-                    </tr>
+                    <tr><td className="p-8 text-center text-slate-400" colSpan={3}>ไม่พบข้อมูลในระบบ</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* ✅ สรุปต่อแผนก */}
-          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
-            <div className="px-4 py-2 font-semibold text-white bg-[#2f3195]">
-              สรุปการใช้รถต่อแผนก ({rangeLabel})
+          {/* ตารางที่ 2: สรุปต่อแผนก */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-indigo-600"/>
+              <h2 className="font-bold text-slate-800">สรุปการใช้รถต่อแผนก (บันทึกไมล์)</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                <thead className="bg-blue-100 text-blue-800">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600 font-medium">
                   <tr>
-                    <th className="p-2 sm:p-3 text-left">แผนก</th>
-                    <th className="p-2 sm:p-3 text-right">จำนวนทริป</th>
-                    <th className="p-2 sm:p-3 text-right">รวมระยะทาง (กม.)</th>
-                    <th className="p-2 sm:p-3 text-right">เวลารวมทั้งหมด</th>
+                    <th className="px-5 py-3 text-left">แผนก</th>
+                    <th className="px-5 py-3 text-right">ทริป</th>
+                    <th className="px-5 py-3 text-right">ระยะทาง (กม.)</th>
+                    <th className="px-5 py-3 text-right">เวลารวม</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {byDepartment.map((r) => (
-                    <tr key={r.department} className="border-b hover:bg-blue-50">
-                      <td className="p-2 sm:p-3">{r.department}</td>
-                      <td className="p-2 sm:p-3 text-right">{r.trips.toLocaleString('th-TH')}</td>
-                      <td className="p-2 sm:p-3 text-right">{r.totalKm.toLocaleString('th-TH')}</td>
-                      <td className="p-2 sm:p-3 text-right">
-                        {formatMinutesToReadable(r.totalMinutes)}
-                      </td>
+                    <tr key={r.department} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3 font-medium">{r.department}</td>
+                      <td className="px-5 py-3 text-right font-mono">{r.trips.toLocaleString('th-TH')}</td>
+                      <td className="px-5 py-3 text-right font-mono text-emerald-600 font-medium">{r.totalKm.toLocaleString('th-TH')}</td>
+                      <td className="px-5 py-3 text-right text-slate-500">{formatMinutesToReadable(r.totalMinutes)}</td>
                     </tr>
                   ))}
                   {byDepartment.length === 0 && (
-                    <tr>
-                      <td className="p-3 text-center text-gray-500" colSpan={3}>ไม่พบข้อมูล</td>
-                    </tr>
+                    <tr><td className="p-8 text-center text-slate-400" colSpan={4}>ไม่พบข้อมูลในระบบ</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* 🔵 สรุปเวลาการใช้รถ (แบบไม่ใช้เลขไมล์) */}
-          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
-            <div className="px-4 py-2 font-semibold text-white bg-purple-700">
-              สรุปเวลาการใช้รถ (ตามช่วงเวลาที่เลือก) — {rangeLabel}
+          {/* ตารางที่ 3: สรุปเวลาต่อทะเบียน */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-purple-50/30">
+              <Clock className="w-5 h-5 text-purple-600"/>
+              <div>
+                <h2 className="font-bold text-slate-800">สรุปเวลาการใช้รถต่อทะเบียน</h2>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">คำนวณจากช่วงเวลาจอง ไม่อิงเลขไมล์</p>
+              </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                <thead className="bg-purple-100 text-purple-800">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600 font-medium">
                   <tr>
-                    <th className="p-2 sm:p-3 text-left">ทะเบียนรถ</th>
-                    <th className="p-2 sm:p-3 text-center">จำนวนทริป</th>
-                    <th className="p-2 sm:p-3 text-right">เวลารวม</th>
-                    <th className="p-2 sm:p-3 text-right">หมายเหตุ</th>
+                    <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
+                    <th className="px-5 py-3 text-center">จำนวนทริป</th>
+                    <th className="px-5 py-3 text-right">เวลารวม</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {aggregatedTime.map((r) => (
-                    <tr key={r.plate} className="border-b hover:bg-purple-50">
-                      <td className="p-2 sm:p-3">{r.plate}</td>
-                      <td className="p-2 sm:p-3 text-center">{r.trips}</td>
-                      <td className="p-2 sm:p-3 text-right">
-                        {formatMinutesToReadable(r.totalMinutes)}
-                      </td>
-                      <td className="p-2 sm:p-3 text-right">
-                        (คำนวณจากช่วงเวลา — ไม่มีการกรอกเลขไมล์)
-                      </td>
+                    <tr key={r.plate} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3 font-medium">{r.plate}</td>
+                      <td className="px-5 py-3 text-center font-mono">{r.trips}</td>
+                      <td className="px-5 py-3 text-right font-medium text-purple-700">{formatMinutesToReadable(r.totalMinutes)}</td>
                     </tr>
                   ))}
                   {aggregatedTime.length === 0 && (
-                    <tr>
-                      <td className="p-3 text-center text-gray-500" colSpan={4}>
-                        ไม่พบข้อมูล
-                      </td>
-                    </tr>
+                    <tr><td className="p-8 text-center text-slate-400" colSpan={3}>ไม่พบข้อมูลในระบบ</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* 🔵 สรุปเวลาการใช้รถต่อแผนก (ไม่ใช้เลขไมล์) */}
-          <div className="bg-white rounded-xl shadow overflow-hidden mb-6 print:shadow-none">
-            <div className="px-4 py-2 font-semibold text-white bg-purple-700">
-              สรุปเวลาการใช้รถต่อแผนก (ตามช่วงเวลาเท่านั้น) — {rangeLabel}
+          {/* ตารางที่ 4: สรุปเวลาต่อแผนก */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-purple-50/30">
+              <Clock className="w-5 h-5 text-purple-600"/>
+              <div>
+                <h2 className="font-bold text-slate-800">สรุปเวลาการใช้รถต่อแผนก</h2>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">คำนวณจากช่วงเวลาจอง ไม่อิงเลขไมล์</p>
+              </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                <thead className="bg-purple-100 text-purple-800">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600 font-medium">
                   <tr>
-                    <th className="p-2 sm:p-3 text-left">แผนก</th>
-                    <th className="p-2 sm:p-3 text-center">จำนวนทริป</th>
-                    <th className="p-2 sm:p-3 text-right">เวลารวมทั้งหมด</th>
-                    <th className="p-2 sm:p-3 text-right">หมายเหตุ</th>
+                    <th className="px-5 py-3 text-left">แผนก</th>
+                    <th className="px-5 py-3 text-center">จำนวนทริป</th>
+                    <th className="px-5 py-3 text-right">เวลารวมทั้งหมด</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {aggregatedTimeByDept.map((r) => (
-                    <tr key={r.department} className="border-b hover:bg-purple-50">
-                      <td className="p-2 sm:p-3">{r.department}</td>
-                      <td className="p-2 sm:p-3 text-center">
-                        {r.trips.toLocaleString('th-TH')}
-                      </td>
-                      <td className="p-2 sm:p-3 text-right">
-                        {formatMinutesToReadable(r.totalMinutes)}
-                      </td>
-                      <td className="p-2 sm:p-3 text-gray-600 text-right">
-                        (คำนวณจากช่วงเวลา — ไม่มีการกรอกเลขไมล์)
-                      </td>
+                    <tr key={r.department} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3 font-medium">{r.department}</td>
+                      <td className="px-5 py-3 text-center font-mono">{r.trips.toLocaleString('th-TH')}</td>
+                      <td className="px-5 py-3 text-right font-medium text-purple-700">{formatMinutesToReadable(r.totalMinutes)}</td>
                     </tr>
                   ))}
-
                   {aggregatedTimeByDept.length === 0 && (
-                    <tr>
-                      <td className="p-3 text-center text-gray-500" colSpan={4}>
-                        ไม่พบข้อมูล
+                    <tr><td className="p-8 text-center text-slate-400" colSpan={3}>ไม่พบข้อมูลในระบบ</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ตารางรายการดิบ เต็มความกว้าง */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+            <Route className="w-5 h-5 text-slate-600"/>
+            <h2 className="font-bold text-slate-800">รายการดิบรายทริป (เฉพาะที่มีการบันทึกเลขไมล์)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 font-medium">
+                <tr>
+                  <th className="px-5 py-3 text-left">วันที่</th>
+                  <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
+                  <th className="px-5 py-3 text-left">แผนก</th>
+                  <th className="px-5 py-3 text-right">ระยะทาง (กม.)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {rowsWithMile
+                  .sort((a, b) => b.date.localeCompare(a.date)) // เรียงใหม่ไปเก่าดีกว่า
+                  .map((r, idx) => (
+                    <tr key={`${r.plate}_${r.date}_${idx}`} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3 font-medium text-slate-600">
+                        {format(new Date(r.date), 'dd MMM yyyy', { locale: th })}
                       </td>
+                      <td className="px-5 py-3 font-medium">{r.plate}</td>
+                      <td className="px-5 py-3 text-slate-500">{r.department}</td>
+                      <td className="px-5 py-3 text-right font-mono font-medium">{r.total_mile?.toLocaleString('th-TH')}</td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))}
+                {rowsWithMile.length === 0 && (
+                  <tr><td className="p-12 text-center text-slate-400" colSpan={4}>ไม่พบข้อมูลในระบบ</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
+        </div>
+      </main>
 
-
-          {/* รายการดิบ */}
-          <div className="bg-white rounded-xl shadow overflow-hidden print:shadow-none">
-            <div className="px-4 py-2 font-semibold text-white bg-gray-600">
-              รายการดิบ (แต่ละทริป) ({rangeLabel})
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                <thead className="bg-blue-100 text-blue-800">
-                  <tr>
-                    <th className="p-2 sm:p-3 text-left">วันที่</th>
-                    <th className="p-2 sm:p-3">ทะเบียนรถ</th>
-                    <th className="p-2 sm:p-3 text-right">ระยะทาง (กม.)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowsWithMile
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((r, idx) => (
-                      <tr key={`${r.plate}_${r.date}_${idx}`} className="border-b hover:bg-blue-50">
-                        <td className="p-2 sm:p-3 text-left">
-                          {format(new Date(r.date), 'dd MMM yyyy', { locale: th })}
-                        </td>
-                        <td className="p-2 sm:p-3 text-center">{r.plate}</td>
-                        <td className="p-2 sm:p-3 text-right">{r.total_mile?.toLocaleString('th-TH')}</td>
-                      </tr>
-                    ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td className="p-3 text-center text-gray-500" colSpan={3}>ไม่พบข้อมูล</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </main>
-
-        {/* สไตล์สำหรับพิมพ์ */}
-        <style jsx global>{`
+      {/* สไตล์สำหรับพิมพ์ */}
+      <style jsx global>{`
         @media print {
+          @page { margin: 1cm; }
           nav, button, .react-datepicker, .react-datepicker__tab-loop, .print\\:hidden { display: none !important; }
-          main { padding: 0 !important; }
-          table { font-size: 12px; }
-          .shadow, .shadow-md, .shadow-lg { box-shadow: none !important; }
+          main { padding: 0 !important; margin: 0 !important; background: white !important;}
+          table { font-size: 11px; }
+          th { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; }
+          .shadow, .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+          .border { border-color: #e2e8f0 !important; }
+          body { background-color: white !important; }
         }
       `}</style>
-      </div>
-    </>
+    </div>
   )
 }

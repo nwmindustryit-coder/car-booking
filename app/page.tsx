@@ -17,7 +17,7 @@ import {
   GaugeIcon,
   EyeIcon,
   Search,
-  Plus,
+  SquarePen,
   Edit,
   Trash2,
   CalendarIcon,
@@ -634,12 +634,17 @@ export default function Dashboard() {
               รายการจองรถ
             </h1>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <Input
-                placeholder="🔍 ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full md:w-72"
-              />
+              {/* สร้าง div relative มาครอบ Input และ Icon ไว้ด้วยกัน */}
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9" /* เพิ่ม pl-9 เพื่อหลบไอคอนแว่นขยาย */
+                />
+              </div>
+
               <Button onClick={() => (location.href = "/booking")}>
                 + จองรถ
               </Button>
@@ -849,7 +854,7 @@ export default function Dashboard() {
                                     <>
                                       <Button
                                         size="sm"
-                                        variant="secondary"
+                                        variant="ghost"
                                         onClick={() => {
                                           setEditForm({
                                             driver_name: b.driver_name,
@@ -864,18 +869,20 @@ export default function Dashboard() {
                                           );
                                           setEditBooking(b);
                                         }}
+                                        className="text-amber-600 hover:bg-amber-50"
                                       >
-                                        ✏️
+                                        <SquarePen className="w-4 h-4 mr-1" /> แก้ไข
                                       </Button>
 
                                       <Button
                                         size="sm"
-                                        variant="destructive"
+                                        variant="ghost"
                                         onClick={
                                           () => handleDeleteBooking(b) // ✅ ส่งทั้งก้อน booking ไปยังฟังก์ชันลบ
                                         }
+                                        className="text-red-600 hover:bg-red-50"
                                       >
-                                        🗑️
+                                        <Trash2 className="w-4 h-4 mr-1" /> ลบ
                                       </Button>
                                     </>
                                   )}

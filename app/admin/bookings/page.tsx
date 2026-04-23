@@ -11,7 +11,7 @@ import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 import { format, isToday } from "date-fns"
 import { th } from "date-fns/locale"
-import { EyeIcon, Search, Activity, AlertCircle, CalendarDays, Filter } from 'lucide-react'
+import { EyeIcon, Search, Activity, AlertCircle, CalendarDays, Filter, RefreshCw, Trash2, SquarePen } from 'lucide-react'
 
 export default function AdminBookings() {
     const [bookings, setBookings] = useState<any[]>([])
@@ -284,7 +284,7 @@ export default function AdminBookings() {
                         </div>
 
                         <Button variant="outline" onClick={loadBookings} disabled={isLoading} className="w-full sm:w-auto">
-                            🔄 รีเฟรชข้อมูล
+                            <RefreshCw className="h-4 w-4 text-blue-600" /> รีเฟรชข้อมูล
                         </Button>
                     </div>
                 </div>
@@ -387,15 +387,16 @@ export default function AdminBookings() {
                                                                 </Button>
                                                             </td>
                                                             <td className="p-3 text-center space-x-2">
-                                                                <Button size="sm" variant="secondary" onClick={() => {
+                                                                <Button size="sm" variant="ghost" onClick={() => {
                                                                     setEditForm({ driver_name: b.driver_name, destination: b.destination, reason: b.reason, date: new Date(b.date) })
                                                                     setSelectedEditTimes(b.time_slot.split(",").map((s: string) => s.trim()))
                                                                     setEditBooking(b)
-                                                                }}>
-                                                                    ✏️ แก้ไข
+                                                                }}
+                                                                className="text-amber-600 hover:bg-amber-50">
+                                                                    <SquarePen className="w-4 h-4 mr-1" /> แก้ไข
                                                                 </Button>
-                                                                <Button variant="destructive" size="sm" onClick={() => deleteBooking(b.id)}>
-                                                                    🗑️ ลบ
+                                                                <Button variant="ghost" size="sm" onClick={() => deleteBooking(b.id)} className="text-red-600 hover:bg-red-50">
+                                                                    <Trash2 className="w-4 h-4 mr-1" /> ลบ
                                                                 </Button>
                                                             </td>
                                                         </tr>
