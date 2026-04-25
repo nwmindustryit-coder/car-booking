@@ -32,6 +32,10 @@ export default function BookingPage() {
   const [user, setUser] = useState<any>(null);
   const [date, setDate] = useState<Date | null>(new Date());
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+  
+  // ✅ เพิ่ม State สำหรับเก็บรายชื่อผู้ขับที่เคยกรอก
+  const [pastDrivers, setPastDrivers] = useState<string[]>([]);
+
   const [form, setForm] = useState({
     driver_name: "",
     car_id: "",
@@ -63,6 +67,18 @@ export default function BookingPage() {
 
       const { data: cars } = await supabase.from("cars").select("*");
       setCars(cars || []);
+
+      // ✅ ดึงประวัติรายชื่อผู้ขับจาก Database (ดึงมา 100 รายการล่าสุดแล้วคัดกรองให้เหลือแต่ชื่อที่ไม่ซ้ำ)
+      const { data: history } = await supabase
+        .from("bookings")
+        .select("driver_name")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      
+      if (history) {
+        const uniqueNames = Array.from(new Set(history.map(h => h.driver_name).filter(Boolean)));
+        setPastDrivers(uniqueNames);
+      }
     };
     init();
   }, [router]);
@@ -251,13 +267,24 @@ export default function BookingPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-slate-400" />
                   </div>
+                  
+                  {/* ✅ เพิ่ม autoComplete="off" เพื่อปิดความจำของเบราว์เซอร์ */}
                   <input
-                    placeholder="ระบุชื่อ-นามสกุล หรือชื่อเล่นผู้ขับ"
+                    list="past-drivers"
+                    autoComplete="off" 
+                    placeholder="ระบุชื่อ-นามสกุล หรือคลิกเพื่อเลือกจากประวัติ"
                     className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
                     value={form.driver_name}
                     onChange={(e) => setForm({ ...form, driver_name: e.target.value })}
                     required
                   />
+                  {/* ✅ DataList สำหรับแสดง Auto-complete จากฐานข้อมูลเท่านั้น */}
+                  <datalist id="past-drivers">
+                    {pastDrivers.map((name, index) => (
+                      <option key={index} value={name} />
+                    ))}
+                  </datalist>
+                  
                 </div>
               </div>
 
