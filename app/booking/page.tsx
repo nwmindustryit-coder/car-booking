@@ -6,7 +6,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -33,7 +32,6 @@ export default function BookingPage() {
   const [date, setDate] = useState<Date | null>(new Date());
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   
-  // ✅ เพิ่ม State สำหรับเก็บรายชื่อผู้ขับที่เคยกรอก
   const [pastDrivers, setPastDrivers] = useState<string[]>([]);
 
   const [form, setForm] = useState({
@@ -45,19 +43,6 @@ export default function BookingPage() {
   const [bookingStatus, setBookingStatus] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const [serverTime, setServerTime] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadServerTime = async () => {
-      const { data, error } = await supabase.rpc("get_server_time");
-      if (error) console.error("Error fetching server time:", error);
-      else if (data) {
-        const localTime = new Date(data).toLocaleString();
-        setServerTime(localTime);
-      }
-    };
-    loadServerTime();
-  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -68,7 +53,6 @@ export default function BookingPage() {
       const { data: cars } = await supabase.from("cars").select("*");
       setCars(cars || []);
 
-      // ✅ ดึงประวัติรายชื่อผู้ขับจาก Database (ดึงมา 100 รายการล่าสุดแล้วคัดกรองให้เหลือแต่ชื่อที่ไม่ซ้ำ)
       const { data: history } = await supabase
         .from("bookings")
         .select("driver_name")
@@ -191,8 +175,8 @@ export default function BookingPage() {
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen bg-slate-50">
-        <div className="p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center">
+      <main className="flex flex-col items-center justify-center h-screen bg-slate-50 p-4">
+        <div className="p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center w-full max-w-sm text-center">
           <Clock className="w-12 h-12 text-blue-500 animate-pulse mb-4" />
           <p className="text-slate-600 font-medium text-lg">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
         </div>
@@ -203,33 +187,36 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-12">
       <Navbar />
-      <main className="p-4 sm:p-6 max-w-3xl mx-auto mt-4">
+      <main className="p-3 sm:p-6 max-w-3xl mx-auto mt-2 sm:mt-4">
         
         {/* Header Title */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-              <CalendarCheck className="w-8 h-8 text-blue-600" /> ทำรายการจองรถ
+              <CalendarCheck className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 shrink-0" /> ทำรายการจองรถ
             </h1>
             <p className="text-slate-500 mt-1 text-sm sm:text-base">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการจองรถส่วนกลาง</p>
           </div>
         </div>
 
-        <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
-          <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="border-none shadow-xl rounded-2xl bg-white overflow-visible sm:overflow-hidden">
+          {/* ✨ แก้ Padding ให้เล็กลงบนมือถือ */}
+          <CardContent className="p-4 sm:p-6 md:p-8">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               
               {/* Row 1: วันที่ & เลือกรถ */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">วันที่จอง</label>
-                  <div className="relative">
+                  <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                       <CalendarDays className="h-5 w-5 text-slate-400" />
                     </div>
+                    {/* ✨ ใส่ wrapperClassName="w-full" เพื่อแก้บั๊ก DatePicker บนมือถือ */}
                     <DatePicker
                       selected={date}
                       onChange={setDate}
+                      wrapperClassName="w-full" 
                       className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 font-medium"
                       dateFormat="dd/MM/yyyy"
                     />
@@ -238,7 +225,7 @@ export default function BookingPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">ทะเบียนรถ</label>
-                  <div className="relative">
+                  <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <CarFront className="h-5 w-5 text-slate-400" />
                     </div>
@@ -263,35 +250,36 @@ export default function BookingPage() {
               {/* ชื่อผู้ขับ */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">ชื่อผู้ขับ</label>
-                <div className="relative">
+                <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-slate-400" />
                   </div>
                   
-                  {/* ✅ เพิ่ม autoComplete="off" เพื่อปิดความจำของเบราว์เซอร์ */}
                   <input
                     list="past-drivers"
-                    autoComplete="off" 
-                    placeholder="ระบุชื่อ-นามสกุล หรือคลิกเพื่อเลือกจากประวัติ"
+                    autoComplete="off"
+                    placeholder="ระบุชื่อ-นามสกุล หรือเลือกจากประวัติ"
                     className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
                     value={form.driver_name}
                     onChange={(e) => setForm({ ...form, driver_name: e.target.value })}
                     required
                   />
-                  {/* ✅ DataList สำหรับแสดง Auto-complete จากฐานข้อมูลเท่านั้น */}
                   <datalist id="past-drivers">
                     {pastDrivers.map((name, index) => (
                       <option key={index} value={name} />
                     ))}
                   </datalist>
-                  
                 </div>
               </div>
 
               {/* เลือกช่วงเวลา */}
               <div className="space-y-3 pt-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-600" /> เลือกช่วงเวลา <span className="text-slate-400 font-normal text-xs">(เลือกได้มากกว่า 1 ช่วง)</span>
+                <label className="text-sm font-semibold text-slate-700 flex flex-wrap items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" /> 
+                  เลือกช่วงเวลา 
+                  <span className="text-slate-400 font-normal text-[11px] sm:text-xs">
+                    (เลือกได้มากกว่า 1 ช่วง)
+                  </span>
                 </label>
                 
                 {!form.car_id ? (
@@ -299,7 +287,8 @@ export default function BookingPage() {
                     กรุณาเลือกรถเพื่อดูช่วงเวลาที่ว่าง
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  // ✨ ปรับ Grid ให้รองรับจอมือถือเล็กมากๆ (เหลือ 1 คอลัมน์ถ้าจอเล็กจัด)
+                  <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {TIME_SLOTS.map((slot) => {
                       const isBooked = bookingStatus[slot] && bookingStatus[slot] !== "ว่าง";
                       const isSelected = selectedTimes.includes(slot);
@@ -311,7 +300,7 @@ export default function BookingPage() {
                           onClick={() => toggleTimeSlot(slot)}
                           disabled={isBooked}
                           className={`
-                            relative p-3 rounded-xl border text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1
+                            relative p-3 rounded-xl border text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 min-h-[60px]
                             ${isBooked 
                               ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-70' 
                               : isSelected 
@@ -320,9 +309,9 @@ export default function BookingPage() {
                             }
                           `}
                         >
-                          <span>{slot}</span>
+                          <span className="whitespace-nowrap">{slot}</span>
                           {isBooked ? (
-                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full mt-1 line-clamp-1 w-full text-center truncate">
+                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full mt-1 w-full text-center truncate">
                               จองแล้ว: {bookingStatus[slot]}
                             </span>
                           ) : isSelected ? (
@@ -339,7 +328,7 @@ export default function BookingPage() {
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">สถานที่ไป</label>
-                  <div className="relative">
+                  <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <MapPin className="h-5 w-5 text-slate-400" />
                     </div>
@@ -355,7 +344,7 @@ export default function BookingPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">เหตุผลการจอง</label>
-                  <div className="relative">
+                  <div className="relative w-full">
                     <div className="absolute top-3 left-3 pointer-events-none">
                       <AlignLeft className="h-5 w-5 text-slate-400" />
                     </div>
@@ -375,19 +364,19 @@ export default function BookingPage() {
               <div className="pt-4 space-y-3">
                 <Button
                   type="submit"
-                  className="w-full h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"
+                  className="w-full h-12 sm:h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                       </svg>
-                      กำลังประมวลผลการจอง...
+                      กำลังประมวลผล...
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <CheckCircle2 className="w-5 h-5" /> ยืนยันการจองรถ
                     </div>
                   )}
