@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, CalendarDays, CarFront, User, MapPin, 
-  AlignLeft, CheckCircle2, Clock, CalendarCheck 
+  AlignLeft, CheckCircle2, Clock, CalendarCheck , ChevronDown
 } from "lucide-react";
 
 const TIME_SLOTS = [
@@ -33,6 +33,7 @@ export default function BookingPage() {
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   
   const [pastDrivers, setPastDrivers] = useState<string[]>([]);
+  const [showDriverDropdown, setShowDriverDropdown] = useState(false);
 
   const [form, setForm] = useState({
     driver_name: "",
@@ -251,24 +252,64 @@ export default function BookingPage() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">ชื่อผู้ขับ</label>
                 <div className="relative w-full">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                     <User className="h-5 w-5 text-slate-400" />
                   </div>
                   
                   <input
-                    list="past-drivers"
                     autoComplete="off"
-                    placeholder="ระบุชื่อ-นามสกุล หรือเลือกจากประวัติ"
-                    className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                    placeholder="ระบุชื่อ-นามสกุล หรือคลิกเพื่อเลือกประวัติ"
+                    className="w-full pl-10 pr-10 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 relative z-10"
                     value={form.driver_name}
-                    onChange={(e) => setForm({ ...form, driver_name: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, driver_name: e.target.value });
+                      setShowDriverDropdown(true); // พิมพ์ปุ๊บให้เปิดกล่องเสมอ
+                    }}
+                    onFocus={() => setShowDriverDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDriverDropdown(false), 200)} // หน่วงเวลาปิดนิดนึงเพื่อให้กดเลือกชื่อทัน
                     required
                   />
-                  <datalist id="past-drivers">
-                    {pastDrivers.map((name, index) => (
-                      <option key={index} value={name} />
-                    ))}
-                  </datalist>
+
+                  {/* ไอคอนลูกศรเพื่อบอกว่ามี Dropdown */}
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showDriverDropdown ? 'rotate-180 text-blue-500' : ''}`} />
+                  </div>
+
+                  {/* กล่อง Dropdown ที่สร้างขึ้นมาเอง */}
+                  {showDriverDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                      {pastDrivers
+                        .filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase()))
+                        .map((name, index) => (
+                          <div
+                            key={index}
+                            className="px-4 py-3 text-slate-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors border-b border-slate-50 last:border-none flex items-center gap-2"
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // ป้องกันไม่ให้ input เสีย focus ก่อนคลิกติด
+                              setForm({ ...form, driver_name: name });
+                              setShowDriverDropdown(false);
+                            }}
+                          >
+                            <User className="w-4 h-4 text-slate-300" />
+                            {name}
+                          </div>
+                      ))}
+                      
+                      {/* กรณีพิมพ์ชื่อใหม่ที่ไม่เคยมีในระบบ */}
+                      {pastDrivers.filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase())).length === 0 && (
+                        <div className="px-4 py-3 text-slate-500 text-sm flex items-center gap-2 bg-slate-50/50 italic">
+                           ✨ กดบันทึกเพื่อใช้ชื่อ "{form.driver_name}" เป็นชื่อใหม่
+                        </div>
+                      )}
+                      
+                      {/* กรณีไม่เคยมีประวัติเลย (ระบบใหม่) */}
+                      {pastDrivers.length === 0 && !form.driver_name && (
+                         <div className="px-4 py-3 text-slate-400 text-sm italic text-center">
+                           ยังไม่มีประวัติรายชื่อ พิมพ์ชื่อใหม่ได้เลยครับ
+                         </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
