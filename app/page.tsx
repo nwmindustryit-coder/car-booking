@@ -493,10 +493,19 @@ export default function Dashboard() {
         }
 
         .alert-container {
-          position: relative;
+          position: fixed;
+          top: 90px; /* ดันลงมาหลบ Navbar (Navbar สูงประมาณ 72px) */
+          right: 20px; /* ให้อยู่มุมขวาบน */
+          z-index: 9999; /* ให้ลอยอยู่เหนือทุกสิ่ง รวมถึง Navbar */
+          width: calc(100% - 40px); /* เผื่อขอบซ้ายขวาบนมือถือ */
+          max-width: 400px; /* บนคอมจะไม่กว้างเกินไป */
+          display: flex;
+          flex-direction: column;
+          pointer-events: none; /* ป้องกันไม่ให้กล่องใสๆ ไปบังการคลิกปุ่มอื่นๆ ด้านหลัง */
         }
 
         .premium-alert {
+          pointer-events: auto; /* ทำให้ตัวกล่องแจ้งเตือนยังสามารถคลิกปุ่มกากบาทได้ปกติ */
           background: linear-gradient(
             135deg,
             #dc2626 0%,
@@ -871,7 +880,8 @@ export default function Dashboard() {
                                         }}
                                         className="text-amber-600 hover:bg-amber-50"
                                       >
-                                        <SquarePen className="w-4 h-4 mr-1" /> แก้ไข
+                                        <SquarePen className="w-4 h-4 mr-1" />{" "}
+                                        แก้ไข
                                       </Button>
 
                                       <Button

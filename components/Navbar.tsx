@@ -234,11 +234,19 @@ export default function Navbar() {
               </div>
             )}
 
-            <div className="pt-2 flex gap-3">
-              <Button variant="outline" className="w-full text-slate-600" onClick={() => setShowChangePassword(false)}>
+            {/* ✅ แก้ไข Layout ปุ่มตรงนี้ */}
+            <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3">
+              <Button 
+                variant="outline" 
+                className="w-full sm:flex-1 text-slate-600 h-11 rounded-xl" 
+                onClick={() => setShowChangePassword(false)}
+              >
                 ยกเลิก
               </Button>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200" onClick={handleChangePassword}>
+              <Button 
+                className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 h-11 rounded-xl" 
+                onClick={handleChangePassword}
+              >
                 บันทึกการเปลี่ยนแปลง
               </Button>
             </div>
