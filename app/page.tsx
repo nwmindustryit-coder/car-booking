@@ -31,8 +31,25 @@ import { th } from "date-fns/locale";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+// ✅ 1. เพิ่มฟังก์ชันเช็กช่วงเวลาปัจจุบัน
+const getCurrentTimeSlot = () => {
+  const now = new Date();
+  const time = now.getHours() * 100 + now.getMinutes(); 
+
+  if (time < 800) return "ก่อนเวลางาน";
+  if (time >= 800 && time <= 900) return "08:00-09:00";
+  if (time > 900 && time <= 1000) return "09:01-10:00";
+  if (time > 1000 && time <= 1100) return "10:01-11:00";
+  if (time > 1100 && time <= 1200) return "11:01-12:00";
+  if (time > 1200 && time <= 1400) return "13:00-14:00"; // รวมเที่ยงถึงบ่ายสอง
+  if (time > 1400 && time <= 1500) return "14:01-15:00";
+  if (time > 1500 && time <= 1600) return "15:01-16:00";
+  if (time > 1600 && time <= 1700) return "16:01-17:00";
+  return "หลังเวลางาน";
+};
+
 export default function Dashboard() {
-  useAuthRedirect(true); // ✅ บังคับให้ login ก่อนเข้าได้
+  useAuthRedirect(true);
 
   const [bookings, setBookings] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -52,9 +69,44 @@ export default function Dashboard() {
   const [editEndMile, setEditEndMile] = useState("");
   const [alerts, setAlerts] = useState<any[]>([]);
 
-  // ✅ State สำหรับตัวกรองเดือน
+  // ✅ 2. เพิ่ม State สำหรับเก็บสถานะรถปัจจุบัน
+  const [carStatuses, setCarStatuses] = useState<any[]>([]);
+
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("all");
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+  // ✅ 3. โหลดสถานะรถยนต์ (เพิ่มเข้ามาใหม่)
+  useEffect(() => {
+    const fetchCarStatus = async () => {
+      const today = new Date().toLocaleDateString("sv-SE");
+      const currentSlot = getCurrentTimeSlot();
+
+      const { data: cars } = await supabase.from("cars").select("*");
+      const { data: todaysBookings } = await supabase
+        .from("bookings")
+        .select("car_id, time_slot, driver_name")
+        .eq("date", today);
+
+      if (cars) {
+        const statusList = cars.map((car) => {
+          const activeBooking = todaysBookings?.find(
+            (b) => b.car_id === car.id && b.time_slot.includes(currentSlot)
+          );
+          return {
+            ...car,
+            isBusy: !!activeBooking,
+            currentDriver: activeBooking?.driver_name || null,
+          };
+        });
+        setCarStatuses(statusList);
+      }
+    };
+
+    fetchCarStatus();
+    // ให้โหลดอัปเดตใหม่ทุกๆ 5 นาที
+    const interval = setInterval(fetchCarStatus, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -339,12 +391,11 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ ย้าย availableMonths ขึ้นมาอยู่ด้านบนก่อน if (!user)
   const availableMonths = useMemo(() => {
     if (filteredBookings.length === 0) return [];
 
     const monthsSet = new Set(
-      filteredBookings.map((b) => b.date.substring(0, 7)), // ดึงแค่ YYYY-MM
+      filteredBookings.map((b) => b.date.substring(0, 7)), 
     );
 
     return Array.from(monthsSet).sort().reverse();
@@ -353,7 +404,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (availableMonths.length > 0 && !hasAutoSelected) {
       setSelectedMonthFilter(availableMonths[0]);
-      setHasAutoSelected(true); // ล็อกไว้ว่าตั้งค่าแล้ว ครั้งต่อไปที่กด "ดูทั้งหมด" จะได้ไม่เด้งกลับ
+      setHasAutoSelected(true); 
     }
   }, [availableMonths, hasAutoSelected]);
 
@@ -496,18 +547,18 @@ export default function Dashboard() {
 
         .alert-container {
           position: fixed;
-          top: 90px; /* ดันลงมาหลบ Navbar (Navbar สูงประมาณ 72px) */
-          right: 20px; /* ให้อยู่มุมขวาบน */
-          z-index: 9999; /* ให้ลอยอยู่เหนือทุกสิ่ง รวมถึง Navbar */
-          width: calc(100% - 40px); /* เผื่อขอบซ้ายขวาบนมือถือ */
-          max-width: 400px; /* บนคอมจะไม่กว้างเกินไป */
+          top: 90px;
+          right: 20px;
+          z-index: 9999;
+          width: calc(100% - 40px);
+          max-width: 400px;
           display: flex;
           flex-direction: column;
-          pointer-events: none; /* ป้องกันไม่ให้กล่องใสๆ ไปบังการคลิกปุ่มอื่นๆ ด้านหลัง */
+          pointer-events: none;
         }
 
         .premium-alert {
-          pointer-events: auto; /* ทำให้ตัวกล่องแจ้งเตือนยังสามารถคลิกปุ่มกากบาทได้ปกติ */
+          pointer-events: auto;
           background: linear-gradient(
             135deg,
             #dc2626 0%,
@@ -638,8 +689,53 @@ export default function Dashboard() {
       `}</style>
       <Navbar />
       <AnnouncementPopup />
-      <div className="p-6">
-        <main className="p-4 sm:p-6 max-w-6xl mx-auto">
+      <div className="p-6 bg-slate-50 min-h-screen">
+        <main className="p-2 sm:p-6 max-w-6xl mx-auto">
+          
+          {/* ✅ 4. ส่วนแสดงสถานะรถ Real-time (เพิ่มเข้ามาใหม่) */}
+          <div className="mb-8">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <CarIcon className="w-5 h-5 text-blue-600" />
+              สถานะรถ ณ ปัจจุบัน (Real-time)
+            </h2>
+            
+            {carStatuses.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {carStatuses.map((car) => (
+                  <div key={car.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 hover:shadow-md">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                        <CarIcon className="w-5 h-5 text-slate-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm sm:text-base">{car.plate}</p>
+                        <p className="text-[11px] sm:text-xs text-slate-500">{car.brand || 'รถส่วนกลาง'}</p>
+                      </div>
+                    </div>
+                    {car.isBusy ? (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                        </span>
+                        ไม่ว่าง ({car.currentDriver})
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        ว่าง
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+               <div className="text-sm text-slate-400 p-4 border border-dashed rounded-xl text-center">
+                 กำลังตรวจสอบสถานะรถ...
+               </div>
+            )}
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
             <h1 className="text-xl sm:text-2xl font-bold text-blue-700">
               รายการจองรถ
@@ -652,11 +748,11 @@ export default function Dashboard() {
                   placeholder="ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9" /* เพิ่ม pl-9 เพื่อหลบไอคอนแว่นขยาย */
+                  className="w-full pl-9 bg-white" 
                 />
               </div>
 
-              <Button onClick={() => (location.href = "/booking")}>
+              <Button onClick={() => (location.href = "/booking")} className="bg-blue-600 hover:bg-blue-700">
                 + จองรถ
               </Button>
             </div>
@@ -670,7 +766,7 @@ export default function Dashboard() {
                 className={
                   selectedMonthFilter === "all"
                     ? "bg-blue-700 text-white"
-                    : "text-gray-600"
+                    : "text-gray-600 bg-white"
                 }
                 onClick={() => setSelectedMonthFilter("all")}
                 size="sm"
@@ -691,7 +787,7 @@ export default function Dashboard() {
                     key={monthStr}
                     variant={isSelected ? "default" : "outline"}
                     className={
-                      isSelected ? "bg-blue-700 text-white" : "text-gray-600"
+                      isSelected ? "bg-blue-700 text-white" : "text-gray-600 bg-white"
                     }
                     onClick={() => setSelectedMonthFilter(monthStr)}
                     size="sm"
@@ -836,26 +932,6 @@ export default function Dashboard() {
                                   }}
                                 >
                                   <EyeIcon className="w-4 h-4 mr-1" /> ดู
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant={
-                                    b.miles_status === "recorded"
-                                      ? "secondary"
-                                      : "outline"
-                                  }
-                                  disabled={b.miles_status === "recorded"}
-                                  onClick={() => {
-                                    if (b.miles_status === "recorded") return; // ป้องกันคลิก
-                                    setSelectedBooking(b);
-                                  }}
-                                  className={
-                                    b.miles_status === "recorded"
-                                      ? "opacity-50 cursor-not-allowed"
-                                      : ""
-                                  }
-                                >
-                                  <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
                                 </Button>
                               </td>
                               {/* ✨ แสดงเฉพาะเมื่อผู้ใช้มีสิทธิ์ */}
