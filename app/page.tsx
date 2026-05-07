@@ -414,7 +414,9 @@ export default function Dashboard() {
                 <div className="alert-text">
                   <span className="alert-plate">รถทะเบียน {a.plate}</span>
                   <span className="alert-message">
-                    เหลืออีก {a.remain} กม. ถึงกำหนดเข้าศูนย์
+                    {a.remain <= 0
+                      ? "ถึงกำหนดเข้าศูนย์แล้ว!"
+                      : `เหลืออีก ${a.remain} กม. ถึงกำหนดเข้าศูนย์`}
                   </span>
                 </div>
               </div>
