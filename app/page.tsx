@@ -76,36 +76,60 @@ export default function Dashboard() {
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   // ✅ 3. โหลดสถานะรถยนต์ (เพิ่มเข้ามาใหม่)
+  // ✅ 3.1 ดึงฟังก์ชันเช็กสถานะรถออกมาเพื่อให้เรียกใช้ได้หลายที่
+  const fetchCarStatus = async () => {
+    const today = new Date().toLocaleDateString("sv-SE");
+    const currentSlot = getCurrentTimeSlot();
+
+    const { data: cars } = await supabase.from("cars").select("*");
+    const { data: todaysBookings } = await supabase
+      .from("bookings")
+      .select("car_id, time_slot, driver_name")
+      .eq("date", today);
+
+    if (cars) {
+      const statusList = cars.map((car) => {
+        const activeBooking = todaysBookings?.find(
+          (b) => b.car_id === car.id && b.time_slot.includes(currentSlot)
+        );
+        return {
+          ...car,
+          isBusy: !!activeBooking,
+          currentDriver: activeBooking?.driver_name || null,
+        };
+      });
+      setCarStatuses(statusList);
+    }
+  };
+
+  // ✅ 3.2 ใช้ useEffect สำหรับเช็กเวลาทุก 1 นาที (เผื่อเวลาเปลี่ยนข้ามสล็อต เช่น จาก 09:59 ไป 10:00)
   useEffect(() => {
-    const fetchCarStatus = async () => {
-      const today = new Date().toLocaleDateString("sv-SE");
-      const currentSlot = getCurrentTimeSlot();
-
-      const { data: cars } = await supabase.from("cars").select("*");
-      const { data: todaysBookings } = await supabase
-        .from("bookings")
-        .select("car_id, time_slot, driver_name")
-        .eq("date", today);
-
-      if (cars) {
-        const statusList = cars.map((car) => {
-          const activeBooking = todaysBookings?.find(
-            (b) => b.car_id === car.id && b.time_slot.includes(currentSlot),
-          );
-          return {
-            ...car,
-            isBusy: !!activeBooking,
-            currentDriver: activeBooking?.driver_name || null,
-          };
-        });
-        setCarStatuses(statusList);
-      }
-    };
-
     fetchCarStatus();
-    // ให้โหลดอัปเดตใหม่ทุกๆ 5 นาที
-    const interval = setInterval(fetchCarStatus, 5 * 60 * 1000);
+    const interval = setInterval(fetchCarStatus, 60 * 1000); 
     return () => clearInterval(interval);
+  }, []);
+
+  // ✅ 3.3 🚀 THE MAGIC: ระบบ Real-time Subscription 🚀
+  useEffect(() => {
+    // เปิดช่องรับสัญญาณ (Channel) คอยฟังสเตตัสของตาราง bookings
+    const bookingChannel = supabase
+      .channel('realtime-booking-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        (payload) => {
+          console.log('🔄 มีอัปเดตแบบ Real-time!', payload);
+          // เมื่อมีการ จองเพิ่ม/ลบ/แก้ ให้โหลดป้ายสถานะรถ และ ตารางด้านล่างใหม่ทันที!
+          fetchCarStatus();
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    // เมื่อผู้ใช้ปิดหน้าจอนี้ ให้ปิดช่องรับสัญญาณเพื่อคืนหน่วยความจำ
+    return () => {
+      supabase.removeChannel(bookingChannel);
+    };
   }, []);
 
   useEffect(() => {
