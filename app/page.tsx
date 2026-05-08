@@ -59,7 +59,9 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [editBooking, setEditBooking] = useState<any | null>(null);
   const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([]);
-  const [editBookingStatus, setEditBookingStatus] = useState<Record<string, string>>({});
+  const [editBookingStatus, setEditBookingStatus] = useState<
+    Record<string, string>
+  >({});
   const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [editStartMile, setEditStartMile] = useState("");
   const [editEndMile, setEditEndMile] = useState("");
@@ -100,7 +102,7 @@ export default function Dashboard() {
     if (cars) {
       const statusList = cars.map((car) => {
         const activeBooking = todaysBookings?.find(
-          (b) => b.car_id === car.id && b.time_slot.includes(currentSlot)
+          (b) => b.car_id === car.id && b.time_slot.includes(currentSlot),
         );
         return {
           ...car,
@@ -114,21 +116,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchCarStatus();
-    const interval = setInterval(fetchCarStatus, 60 * 1000); 
+    const interval = setInterval(fetchCarStatus, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
   // 2. ระบบ Real-time Subscription (Socket)
   useEffect(() => {
     const bookingChannel = supabase
-      .channel('realtime-booking-channel')
+      .channel("realtime-booking-channel")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
         () => {
           fetchCarStatus();
           loadBookings();
-        }
+        },
       )
       .subscribe();
 
@@ -138,24 +140,79 @@ export default function Dashboard() {
   }, []);
 
   // 3. โหลดแจ้งเตือนการบำรุงรักษารถ
+  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี
   useEffect(() => {
     const loadAlerts = async () => {
       const { data: cars } = await supabase.from("cars").select("*");
-      const { data: maintenance } = await supabase.from("car_maintenance").select("*");
+      const { data: maintenance } = await supabase
+        .from("car_maintenance")
+        .select("*");
       const { data: log } = await supabase.from("car_mileage_log").select("*");
 
       const result: any[] = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       cars?.forEach((car) => {
-        const m = maintenance.find((x) => x.car_id === car.id);
-        const mg = log.find((x) => x.car_id === car.id);
-        if (!m || !mg) return;
-        const remain = m.next_service_mileage - mg.current_mileage;
-        if (remain <= m.alert_before_mileage) {
-          result.push({ plate: car.plate, remain });
+        // 🔴 1. เช็กระยะไมล์เข้าศูนย์
+        const m = maintenance?.find((x) => x.car_id === car.id);
+        const mg = log?.find((x) => x.car_id === car.id);
+
+        if (m && mg) {
+          const remain = m.next_service_mileage - mg.current_mileage;
+          if (remain <= m.alert_before_mileage) {
+            result.push({
+              id: `${car.id}-maint`,
+              plate: car.plate,
+              title: "แจ้งเตือนเข้าศูนย์",
+              message:
+                remain <= 0
+                  ? "ถึงกำหนดเข้าศูนย์แล้ว!"
+                  : `เหลืออีก ${remain} กม. ถึงกำหนดเข้าศูนย์`,
+              type: "maintenance",
+            });
+          }
         }
+
+        // 🔵 2. เช็กวันหมดอายุ ภาษี / พ.ร.บ. / ประกัน (ดึงค่าแจ้งเตือนล่วงหน้ามาจาก DB)
+        const checkExpire = (
+          expireDate: string | null,
+          docName: string,
+          alertDays: number,
+        ) => {
+          if (!expireDate) return;
+          const exp = new Date(expireDate);
+          const diffTime = exp.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays <= alertDays) {
+            // <-- เปลี่ยนจาก <= 30 เป็นใช้ค่าจาก DB
+            result.push({
+              id: `${car.id}-${docName}`,
+              plate: car.plate,
+              title: `แจ้งเตือนต่อ${docName}`,
+              message:
+                diffDays < 0
+                  ? `หมดอายุมาแล้ว ${Math.abs(diffDays)} วัน! ❌`
+                  : diffDays === 0
+                    ? "หมดอายุวันนี้! ⚠️"
+                    : `กำลังจะหมดอายุในอีก ${diffDays} วัน`,
+              type: "document",
+            });
+          }
+        };
+
+        // ดึงค่าการแจ้งเตือนจาก DB (ถ้าไม่ได้ตั้งค่าให้ใช้ 30 วันเป็นค่าเริ่มต้น)
+        const alertDays = car.alert_before_days ?? 30;
+
+        checkExpire(car.tax_expire, "ภาษี", alertDays);
+        checkExpire(car.act_expire, "พ.ร.บ.", alertDays);
+        checkExpire(car.insurance_expire, "ประกันภัย", alertDays);
       });
+
       setAlerts(result);
     };
+
     loadAlerts();
   }, []);
 
@@ -182,9 +239,16 @@ export default function Dashboard() {
   }, [editBooking]);
 
   const TIME_SLOTS = [
-    "ก่อนเวลางาน", "08:00-09:00", "09:01-10:00", "10:01-11:00",
-    "11:01-12:00", "13:00-14:00", "14:01-15:00", "15:01-16:00",
-    "16:01-17:00", "หลังเวลางาน",
+    "ก่อนเวลางาน",
+    "08:00-09:00",
+    "09:01-10:00",
+    "10:01-11:00",
+    "11:01-12:00",
+    "13:00-14:00",
+    "14:01-15:00",
+    "15:01-16:00",
+    "16:01-17:00",
+    "หลังเวลางาน",
   ];
 
   function mergeTimeSlots(timeSlotString: string): string {
@@ -216,8 +280,10 @@ export default function Dashboard() {
       const firstSlot = TIME_SLOTS[group[0]];
       const lastSlot = TIME_SLOTS[group[group.length - 1]];
       if (group.length === 1) return firstSlot;
-      if (firstSlot === "ก่อนเวลางาน") return `ก่อนเวลางาน-${lastSlot.split("-").pop()}`;
-      if (lastSlot === "หลังเวลางาน") return `${firstSlot.split("-")[0]}-หลังเวลางาน`;
+      if (firstSlot === "ก่อนเวลางาน")
+        return `ก่อนเวลางาน-${lastSlot.split("-").pop()}`;
+      if (lastSlot === "หลังเวลางาน")
+        return `${firstSlot.split("-")[0]}-หลังเวลางาน`;
       return `${firstSlot.split("-")[0]}-${lastSlot.split("-").pop()}`;
     });
 
@@ -228,14 +294,14 @@ export default function Dashboard() {
   useEffect(() => {
     const getUserAndLoad = async () => {
       const { data, error } = await supabase.auth.getUser();
-      
+
       if (data.user) {
         setUser(data.user);
-        
+
         // ✨ ดึงสิทธิ์จากตาราง profiles คอลัมน์ role
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("role") 
+          .select("role")
           .eq("id", data.user.id)
           .maybeSingle();
 
@@ -256,7 +322,7 @@ export default function Dashboard() {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        `*, miles:miles!miles_booking_id_fkey(id, start_mile, end_mile, total_mile), cars(plate)`
+        `*, miles:miles!miles_booking_id_fkey(id, start_mile, end_mile, total_mile), cars(plate)`,
       )
       .order("date", { ascending: false });
 
@@ -352,24 +418,32 @@ export default function Dashboard() {
 
     // ยิง API แจ้งเตือน
     await fetch("/api/line/notify-delete", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_name: user.email, driver_name: booking.driver_name,
-        car_plate: booking.cars?.plate || "", date: booking.date, destination: booking.destination,
+        user_name: user.email,
+        driver_name: booking.driver_name,
+        car_plate: booking.cars?.plate || "",
+        date: booking.date,
+        destination: booking.destination,
       }),
     });
 
     await fetch("/api/telegram/notify-delete", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_name: user.email, driver_name: booking.driver_name,
-        car_plate: booking.cars?.plate || "", date: booking.date, destination: booking.destination,
+        user_name: user.email,
+        driver_name: booking.driver_name,
+        car_plate: booking.cars?.plate || "",
+        date: booking.date,
+        destination: booking.destination,
       }),
     });
 
     // 🔒 ระบบจัดการสิทธิ์การลบ
     let deleteQuery = supabase.from("bookings").delete().eq("id", booking.id);
-    
+
     // ถ้าไม่ใช่แอดมิน ให้ลบได้เฉพาะของ User ตัวเองเท่านั้น
     if (!isAdmin) {
       deleteQuery = deleteQuery.eq("user_id", user.id);
@@ -386,7 +460,9 @@ export default function Dashboard() {
 
   const availableMonths = useMemo(() => {
     if (filteredBookings.length === 0) return [];
-    const monthsSet = new Set(filteredBookings.map((b) => b.date.substring(0, 7)));
+    const monthsSet = new Set(
+      filteredBookings.map((b) => b.date.substring(0, 7)),
+    );
     return Array.from(monthsSet).sort().reverse();
   }, [filteredBookings]);
 
@@ -408,14 +484,19 @@ export default function Dashboard() {
         .select("id, car_id, time_slot, driver_name")
         .eq("date", swapBooking.date);
 
-      const swapSlots = swapBooking.time_slot.split(",").map((s: string) => s.trim());
+      const swapSlots = swapBooking.time_slot
+        .split(",")
+        .map((s: string) => s.trim());
 
       const options = allCars
         ?.filter((car) => car.id !== swapBooking.car_id)
         .map((car) => {
-          const carBookings = bookingsOnDate?.filter((b) => b.car_id === car.id) || [];
+          const carBookings =
+            bookingsOnDate?.filter((b) => b.car_id === car.id) || [];
           const conflicts = carBookings.filter((b) => {
-            const bookedSlots = b.time_slot.split(",").map((s: string) => s.trim());
+            const bookedSlots = b.time_slot
+              .split(",")
+              .map((s: string) => s.trim());
             return bookedSlots.some((slot) => swapSlots.includes(slot));
           });
 
@@ -438,7 +519,7 @@ export default function Dashboard() {
     if (!selectedNewCar) return alert("กรุณาเลือกรถที่ต้องการสลับ");
     setIsSwapping(true);
 
-    const targetCar = swapOptions.find(c => c.id === selectedNewCar);
+    const targetCar = swapOptions.find((c) => c.id === selectedNewCar);
 
     try {
       if (targetCar?.isBooked) {
@@ -457,7 +538,11 @@ export default function Dashboard() {
 
       if (moveOurError) throw moveOurError;
 
-      alert(targetCar?.isBooked ? "สลับรถระหว่างคิวสำเร็จแล้ว! 🔄🚗" : "เปลี่ยนรถเรียบร้อยแล้ว! 🚗✅");
+      alert(
+        targetCar?.isBooked
+          ? "สลับรถระหว่างคิวสำเร็จแล้ว! 🔄🚗"
+          : "เปลี่ยนรถเรียบร้อยแล้ว! 🚗✅",
+      );
       setSwapBooking(null);
       await loadBookings();
       fetchCarStatus();
@@ -471,43 +556,83 @@ export default function Dashboard() {
   if (!user) {
     return (
       <main className="flex flex-col items-center justify-center h-screen text-blue-600">
-        <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        <svg
+          className="animate-spin h-8 w-8 mb-3 text-blue-500"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
         </svg>
-        <p className="text-gray-500 animate-pulse">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
+        <p className="text-gray-500 animate-pulse">
+          กำลังตรวจสอบสิทธิ์ผู้ใช้...
+        </p>
       </main>
     );
   }
 
   return (
     <>
+      {/* แจ้งเตือน */}
       {alerts.length > 0 && (
         <div className="alert-container">
           {alerts.map((a, idx) => (
-            <div key={idx} className="premium-alert" style={{ animationDelay: `${idx * 0.1}s` }}>
+            <div
+              key={a.id || idx}
+              // ✨ เปลี่ยนสีกล่องให้ต่างกัน: เข้าศูนย์สีแดง, เอกสารสีส้ม
+              className={`premium-alert ${a.type === "document" ? "bg-gradient-to-br from-amber-500 to-orange-600" : ""}`}
+              style={{ animationDelay: `${idx * 0.1}s` }}
+            >
               <div className="alert-content">
                 <div className="alert-icon">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="10" cy="10" r="9" className="ring-pulse" />
-                  </svg>
+                  {a.type === "document" ? (
+                    <span className="text-xl">📄</span>
+                  ) : (
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="10" cy="10" r="9" className="ring-pulse" />
+                    </svg>
+                  )}
                 </div>
                 <div className="alert-text">
                   <span className="alert-plate">รถทะเบียน {a.plate}</span>
-                  <span className="alert-message">
-                    {a.remain <= 0 ? "ถึงกำหนดเข้าศูนย์แล้ว!" : `เหลืออีก ${a.remain} กม. ถึงกำหนดเข้าศูนย์`}
+                  <span className="alert-message font-bold">{a.title}</span>
+                  <span className="alert-message text-xs opacity-90">
+                    {a.message}
                   </span>
                 </div>
               </div>
               <button
                 className="alert-close"
                 onClick={() => {
-                  const element = document.querySelectorAll(".premium-alert")[idx];
+                  const element =
+                    document.querySelectorAll(".premium-alert")[idx];
                   element?.classList.add("removing");
                   setTimeout(() => {
-                    setAlerts((prev) => prev.filter((_, i) => i !== idx));
+                    setAlerts((prev) =>
+                      prev.filter((item) => item.id !== a.id),
+                    );
                   }, 400);
                 }}
+                aria-label="ปิดการแจ้งเตือน"
               >
                 ×
               </button>
@@ -517,33 +642,191 @@ export default function Dashboard() {
       )}
 
       <style jsx>{`
-        @keyframes slideInDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
-        @keyframes pulseGlow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
-        @keyframes ringPulse { 0%, 100% { stroke-dasharray: 0 100; opacity: 0.6; } 50% { stroke-dasharray: 50 100; opacity: 1; } }
-        @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-        
-        .alert-container { position: fixed; top: 90px; right: 20px; z-index: 9999; width: calc(100% - 40px); max-width: 400px; display: flex; flex-direction: column; pointer-events: none; }
-        .premium-alert { pointer-events: auto; background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; animation: slideInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1); position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .premium-alert::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); background-size: 200% 100%; animation: shimmer 3s infinite; pointer-events: none; }
-        .premium-alert:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4), 0 4px 8px rgba(0, 0, 0, 0.15); }
-        .premium-alert.removing { animation: fadeOut 0.4s cubic-bezier(0.4, 0, 1, 1) forwards; }
-        .alert-content { display: flex; align-items: center; gap: 12px; flex: 1; position: relative; z-index: 1; }
-        .alert-icon { width: 40px; height: 40px; background: rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; animation: pulseGlow 2s ease-in-out infinite; backdrop-filter: blur(8px); color: white; }
-        .ring-pulse { animation: ringPulse 2s ease-in-out infinite; }
-        .alert-text { display: flex; flex-direction: column; gap: 4px; color: white; }
-        .alert-plate { font-size: 16px; font-weight: 500; letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
-        .alert-message { font-size: 14px; opacity: 0.95; font-weight: 400; }
-        .alert-close { width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: none; color: white; font-size: 24px; line-height: 1; cursor: pointer; flex-shrink: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; backdrop-filter: blur(8px); }
-        .alert-close:hover { background: rgba(255, 255, 255, 0.35); transform: rotate(90deg) scale(1.1); }
-        .alert-close:active { transform: rotate(90deg) scale(0.95); }
+        @keyframes slideInDown {
+          from {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeOut {
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+        }
+        @keyframes pulseGlow {
+          0%,
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.8;
+            transform: scale(1.1);
+          }
+        }
+        @keyframes ringPulse {
+          0%,
+          100% {
+            stroke-dasharray: 0 100;
+            opacity: 0.6;
+          }
+          50% {
+            stroke-dasharray: 50 100;
+            opacity: 1;
+          }
+        }
+        @keyframes shimmer {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+
+        .alert-container {
+          position: fixed;
+          top: 90px;
+          right: 20px;
+          z-index: 9999;
+          width: calc(100% - 40px);
+          max-width: 400px;
+          display: flex;
+          flex-direction: column;
+          pointer-events: none;
+        }
+        .premium-alert {
+          pointer-events: auto;
+          background: linear-gradient(
+            135deg,
+            #dc2626 0%,
+            #ef4444 50%,
+            #f87171 100%
+          );
+          border-radius: 12px;
+          padding: 16px 20px;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          animation: slideInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          opacity: 0;
+          box-shadow:
+            0 4px 12px rgba(220, 38, 38, 0.3),
+            0 2px 4px rgba(0, 0, 0, 0.1);
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .premium-alert::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          );
+          background-size: 200% 100%;
+          animation: shimmer 3s infinite;
+          pointer-events: none;
+        }
+        .premium-alert:hover {
+          transform: translateY(-2px);
+          box-shadow:
+            0 6px 16px rgba(220, 38, 38, 0.4),
+            0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .premium-alert.removing {
+          animation: fadeOut 0.4s cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+        .alert-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1;
+          position: relative;
+          z-index: 1;
+        }
+        .alert-icon {
+          width: 40px;
+          height: 40px;
+          background: rgba(255, 255, 255, 0.25);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          animation: pulseGlow 2s ease-in-out infinite;
+          backdrop-filter: blur(8px);
+          color: white;
+        }
+        .ring-pulse {
+          animation: ringPulse 2s ease-in-out infinite;
+        }
+        .alert-text {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          color: white;
+        }
+        .alert-plate {
+          font-size: 16px;
+          font-weight: 500;
+          letter-spacing: 0.3px;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .alert-message {
+          font-size: 14px;
+          opacity: 0.95;
+          font-weight: 400;
+        }
+        .alert-close {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          font-size: 24px;
+          line-height: 1;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          z-index: 1;
+          backdrop-filter: blur(8px);
+        }
+        .alert-close:hover {
+          background: rgba(255, 255, 255, 0.35);
+          transform: rotate(90deg) scale(1.1);
+        }
+        .alert-close:active {
+          transform: rotate(90deg) scale(0.95);
+        }
       `}</style>
-      
+
       <Navbar />
       <AnnouncementPopup />
       <div className="p-6 bg-slate-50 min-h-screen">
         <main className="p-2 sm:p-6 max-w-6xl mx-auto">
-          
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -562,14 +845,21 @@ export default function Dashboard() {
             {carStatuses.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {carStatuses.map((car) => (
-                  <div key={car.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 hover:shadow-md">
+                  <div
+                    key={car.id}
+                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 hover:shadow-md"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
                         <CarIcon className="w-5 h-5 text-slate-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 text-sm sm:text-base">{car.plate}</p>
-                        <p className="text-[11px] sm:text-xs text-slate-500">{car.brand || "รถส่วนกลาง"}</p>
+                        <p className="font-bold text-slate-800 text-sm sm:text-base">
+                          {car.plate}
+                        </p>
+                        <p className="text-[11px] sm:text-xs text-slate-500">
+                          {car.brand || "รถส่วนกลาง"}
+                        </p>
                       </div>
                     </div>
                     {car.isBusy ? (
@@ -597,8 +887,10 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold text-blue-700">รายการจองรถ</h1>
-            
+            <h1 className="text-xl sm:text-2xl font-bold text-blue-700">
+              รายการจองรถ
+            </h1>
+
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -609,7 +901,10 @@ export default function Dashboard() {
                   className="w-full pl-9 bg-white"
                 />
               </div>
-              <Button onClick={() => (location.href = "/booking")} className="bg-blue-600 hover:bg-blue-700">
+              <Button
+                onClick={() => (location.href = "/booking")}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 + จองรถ
               </Button>
             </div>
@@ -619,7 +914,11 @@ export default function Dashboard() {
             <div className="flex overflow-x-auto pb-2 mb-4 gap-2 scrollbar-hide">
               <Button
                 variant={selectedMonthFilter === "all" ? "default" : "outline"}
-                className={selectedMonthFilter === "all" ? "bg-blue-700 text-white" : "text-gray-600 bg-white"}
+                className={
+                  selectedMonthFilter === "all"
+                    ? "bg-blue-700 text-white"
+                    : "text-gray-600 bg-white"
+                }
                 onClick={() => setSelectedMonthFilter("all")}
                 size="sm"
               >
@@ -627,13 +926,21 @@ export default function Dashboard() {
               </Button>
               {availableMonths.map((monthStr) => {
                 const [year, month] = monthStr.split("-");
-                const monthName = format(new Date(Number(year), Number(month) - 1), "MMMM yyyy", { locale: th });
+                const monthName = format(
+                  new Date(Number(year), Number(month) - 1),
+                  "MMMM yyyy",
+                  { locale: th },
+                );
                 const isSelected = selectedMonthFilter === monthStr;
                 return (
                   <Button
                     key={monthStr}
                     variant={isSelected ? "default" : "outline"}
-                    className={isSelected ? "bg-blue-700 text-white" : "text-gray-600 bg-white"}
+                    className={
+                      isSelected
+                        ? "bg-blue-700 text-white"
+                        : "text-gray-600 bg-white"
+                    }
                     onClick={() => setSelectedMonthFilter(monthStr)}
                     size="sm"
                   >
@@ -651,28 +958,40 @@ export default function Dashboard() {
                   if (selectedMonthFilter === "all") return true;
                   return booking.date.startsWith(selectedMonthFilter);
                 })
-                .reduce((groups, booking) => {
-                    const date = new Date(booking.date).toISOString().split("T")[0];
+                .reduce(
+                  (groups, booking) => {
+                    const date = new Date(booking.date)
+                      .toISOString()
+                      .split("T")[0];
                     if (!groups[date]) groups[date] = [];
                     groups[date].push(booking);
                     return groups;
-                  }, {} as Record<string, any[]>
+                  },
+                  {} as Record<string, any[]>,
                 ),
             )
               .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
               .map(([date, group]: [string, any[]]) => {
                 const d = new Date(date);
                 const isEvenMonth = d.getMonth() % 2 === 0;
-                
+
                 // ✨ ตรวจสอบว่ามีสิทธิ์จัดการของวันนี้ไหม (แอดมินดูได้หมด หรือมีคิวของตัวเอง)
-                const canManageDay = isAdmin || group.some((b) => b.user_id === user.id);
-                const bgColor = isToday(d) ? "bg-green-600" : isEvenMonth ? "bg-gray-700" : "bg-gray-600";
+                const canManageDay =
+                  isAdmin || group.some((b) => b.user_id === user.id);
+                const bgColor = isToday(d)
+                  ? "bg-green-600"
+                  : isEvenMonth
+                    ? "bg-gray-700"
+                    : "bg-gray-600";
 
                 return (
                   <div key={date} className="border-b last:border-none">
-                    <div className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor}`}>
+                    <div
+                      className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor}`}
+                    >
                       <div>
-                        📅 {format(d, "dd MMMM yyyy", { locale: th })} {isToday(d) && "(วันนี้)"}
+                        📅 {format(d, "dd MMMM yyyy", { locale: th })}{" "}
+                        {isToday(d) && "(วันนี้)"}
                       </div>
                       <div className="text-sm text-gray-200">
                         ({group.length.toLocaleString("th-TH")} รายการ)
@@ -689,22 +1008,41 @@ export default function Dashboard() {
                             <th className="p-2 sm:p-3">ช่วงเวลา</th>
                             <th className="p-2 sm:p-3">สถานที่</th>
                             <th className="p-2 sm:p-3">เหตุผล</th>
-                            <th className="p-2 sm:p-3 text-center">สถานะไมล์</th>
+                            <th className="p-2 sm:p-3 text-center">
+                              สถานะไมล์
+                            </th>
                             <th className="p-2 sm:p-3 text-center">ดู</th>
-                            {canManageDay && <th className="p-2 sm:p-3 text-center">จัดการ</th>}
+                            {canManageDay && (
+                              <th className="p-2 sm:p-3 text-center">จัดการ</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
                           {group.map((b: any) => (
-                            <tr key={b.id} className="border-b hover:bg-blue-50 transition-colors">
-                              <td className="p-2 sm:p-3 text-center font-medium">{b.driver_name}</td>
-                              <td className="p-2 sm:p-3 text-center">
-                                <Badge variant="outline" className="bg-white">{b.cars?.plate}</Badge>
+                            <tr
+                              key={b.id}
+                              className="border-b hover:bg-blue-50 transition-colors"
+                            >
+                              <td className="p-2 sm:p-3 text-center font-medium">
+                                {b.driver_name}
                               </td>
-                              <td className="p-2 sm:p-3 text-center">{b.date}</td>
-                              <td className="p-2 sm:p-3 text-center text-slate-600">{mergeTimeSlots(b.time_slot)}</td>
-                              <td className="p-2 sm:p-3 text-slate-700">{b.destination}</td>
-                              <td className="p-2 sm:p-3 text-slate-500 text-xs">{b.reason}</td>
+                              <td className="p-2 sm:p-3 text-center">
+                                <Badge variant="outline" className="bg-white">
+                                  {b.cars?.plate}
+                                </Badge>
+                              </td>
+                              <td className="p-2 sm:p-3 text-center">
+                                {b.date}
+                              </td>
+                              <td className="p-2 sm:p-3 text-center text-slate-600">
+                                {mergeTimeSlots(b.time_slot)}
+                              </td>
+                              <td className="p-2 sm:p-3 text-slate-700">
+                                {b.destination}
+                              </td>
+                              <td className="p-2 sm:p-3 text-slate-500 text-xs">
+                                {b.reason}
+                              </td>
                               <td className="p-2 sm:p-3 text-center">
                                 {b.miles_status === "recorded" ? (
                                   <span className="text-emerald-600 font-semibold text-xs bg-emerald-50 px-2 py-1 rounded-full">
@@ -723,17 +1061,29 @@ export default function Dashboard() {
                                     variant="outline"
                                     onClick={async () => {
                                       const { data: milesData } = await supabase
-                                        .from("miles").select("start_mile, end_mile, total_mile")
-                                        .eq("booking_id", b.id).limit(1).maybeSingle();
-                                      setShowDetail({ ...b, miles: milesData || null });
+                                        .from("miles")
+                                        .select(
+                                          "start_mile, end_mile, total_mile",
+                                        )
+                                        .eq("booking_id", b.id)
+                                        .limit(1)
+                                        .maybeSingle();
+                                      setShowDetail({
+                                        ...b,
+                                        miles: milesData || null,
+                                      });
                                     }}
                                     className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 bg-white hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm flex items-center"
                                   >
-                                    <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500" /> ดู
+                                    <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500" />{" "}
+                                    ดู
                                   </Button>
                                   <Button
                                     size="sm"
-                                    disabled={b.miles_status === "recorded" || (!isAdmin && b.user_id !== user.id)}
+                                    disabled={
+                                      b.miles_status === "recorded" ||
+                                      (!isAdmin && b.user_id !== user.id)
+                                    }
                                     onClick={() => setSelectedBooking(b)}
                                     className={`h-8 px-3 rounded-lg flex items-center transition-all duration-200 ${
                                       b.miles_status === "recorded"
@@ -741,7 +1091,9 @@ export default function Dashboard() {
                                         : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 border-none"
                                     }`}
                                   >
-                                    <GaugeIcon className={`w-4 h-4 mr-1.5 ${b.miles_status === "recorded" ? "text-slate-400" : "text-blue-100"}`} />
+                                    <GaugeIcon
+                                      className={`w-4 h-4 mr-1.5 ${b.miles_status === "recorded" ? "text-slate-400" : "text-blue-100"}`}
+                                    />
                                     ไมล์
                                   </Button>
                                 </div>
@@ -753,7 +1105,9 @@ export default function Dashboard() {
                                   {(b.user_id === user.id || isAdmin) && (
                                     <div className="flex items-center justify-center gap-1">
                                       <Button
-                                        size="sm" variant="ghost" title="แก้ไขข้อมูล"
+                                        size="sm"
+                                        variant="ghost"
+                                        title="แก้ไขข้อมูล"
                                         onClick={() => {
                                           setEditForm({
                                             driver_name: b.driver_name,
@@ -761,7 +1115,11 @@ export default function Dashboard() {
                                             reason: b.reason,
                                             date: new Date(b.date),
                                           });
-                                          setSelectedEditTimes(b.time_slot.split(",").map((s: string) => s.trim()));
+                                          setSelectedEditTimes(
+                                            b.time_slot
+                                              .split(",")
+                                              .map((s: string) => s.trim()),
+                                          );
                                           setEditBooking(b);
                                         }}
                                         className="text-amber-600 hover:bg-amber-50 h-8 px-2"
@@ -772,7 +1130,9 @@ export default function Dashboard() {
                                       {/* ✨ ปุ่มสลับรถ ซ่อนไว้เฉพาะแอดมินเท่านั้น */}
                                       {isAdmin && (
                                         <Button
-                                          size="sm" variant="ghost" title="สลับรถยนต์ / สลับคิว"
+                                          size="sm"
+                                          variant="ghost"
+                                          title="สลับรถยนต์ / สลับคิว"
                                           onClick={() => setSwapBooking(b)}
                                           className="text-indigo-600 hover:bg-indigo-50 h-8 px-2"
                                         >
@@ -781,7 +1141,9 @@ export default function Dashboard() {
                                       )}
 
                                       <Button
-                                        size="sm" variant="ghost" title="ลบรายการ"
+                                        size="sm"
+                                        variant="ghost"
+                                        title="ลบรายการ"
                                         onClick={() => handleDeleteBooking(b)}
                                         className="text-red-600 hover:bg-red-50 h-8 px-2"
                                       >
@@ -809,24 +1171,48 @@ export default function Dashboard() {
               </DialogHeader>
               {showDetail && (
                 <div className="space-y-2 text-sm">
-                  <p><b>อีเมลผู้จอง:</b> {showDetail.user_name}</p>
-                  <p><b>ชื่อผู้ขับ:</b> {showDetail.driver_name}</p>
-                  <p><b>ทะเบียนรถ:</b> {showDetail.cars?.plate}</p>
-                  <p><b>วันที่:</b> {showDetail.date}</p>
-                  <p><b>ช่วงเวลา:</b> {showDetail.time_slot}</p>
-                  <p><b>สถานที่:</b> {showDetail.destination}</p>
-                  <p><b>เหตุผล:</b> {showDetail.reason}</p>
+                  <p>
+                    <b>อีเมลผู้จอง:</b> {showDetail.user_name}
+                  </p>
+                  <p>
+                    <b>ชื่อผู้ขับ:</b> {showDetail.driver_name}
+                  </p>
+                  <p>
+                    <b>ทะเบียนรถ:</b> {showDetail.cars?.plate}
+                  </p>
+                  <p>
+                    <b>วันที่:</b> {showDetail.date}
+                  </p>
+                  <p>
+                    <b>ช่วงเวลา:</b> {showDetail.time_slot}
+                  </p>
+                  <p>
+                    <b>สถานที่:</b> {showDetail.destination}
+                  </p>
+                  <p>
+                    <b>เหตุผล:</b> {showDetail.reason}
+                  </p>
 
                   {showDetail.miles ? (
                     <div className="pt-2 border-t mt-2">
-                      <p><b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}</p>
-                      <p><b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}</p>
+                      <p>
+                        <b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}
+                      </p>
+                      <p>
+                        <b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}
+                      </p>
                       <p className="text-blue-700 font-semibold">
-                        🚗 ใช้ไปทั้งหมด {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
+                        🚗 ใช้ไปทั้งหมด{" "}
+                        {showDetail.miles.total_mile ??
+                          showDetail.miles.end_mile -
+                            showDetail.miles.start_mile}{" "}
+                        กม.
                       </p>
                     </div>
                   ) : (
-                    <p className="italic text-gray-400 pt-2 border-t mt-2">ยังไม่ได้บันทึกเลขไมล์</p>
+                    <p className="italic text-gray-400 pt-2 border-t mt-2">
+                      ยังไม่ได้บันทึกเลขไมล์
+                    </p>
                   )}
                 </div>
               )}
@@ -834,7 +1220,10 @@ export default function Dashboard() {
           </Dialog>
 
           {/* 🌟 Modal 2: Dialog บันทึกเลขไมล์ */}
-          <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
+          <Dialog
+            open={!!selectedBooking}
+            onOpenChange={() => setSelectedBooking(null)}
+          >
             <DialogContent className="w-[95vw] sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>บันทึกเลขไมล์</DialogTitle>
@@ -846,40 +1235,59 @@ export default function Dashboard() {
                     ผู้ขับ: <b>{selectedBooking.driver_name}</b>
                   </p>
                   <Input
-                    type="number" placeholder="เลขไมล์เริ่มต้น"
-                    value={startMile} onChange={(e) => setStartMile(e.target.value)}
+                    type="number"
+                    placeholder="เลขไมล์เริ่มต้น"
+                    value={startMile}
+                    onChange={(e) => setStartMile(e.target.value)}
                   />
                   <Input
-                    type="number" placeholder="เลขไมล์สิ้นสุด"
-                    value={endMile} onChange={(e) => setEndMile(e.target.value)}
+                    type="number"
+                    placeholder="เลขไมล์สิ้นสุด"
+                    value={endMile}
+                    onChange={(e) => setEndMile(e.target.value)}
                   />
                   {usedMile !== null && (
                     <p className="text-center text-sm text-blue-700">
                       รวมระยะทางที่ใช้: <b>{usedMile}</b> กม.
                     </p>
                   )}
-                  <Button className="w-full" onClick={handleSaveMiles}>💾 บันทึกเลขไมล์</Button>
+                  <Button className="w-full" onClick={handleSaveMiles}>
+                    💾 บันทึกเลขไมล์
+                  </Button>
                 </div>
               )}
             </DialogContent>
           </Dialog>
 
           {/* 🌟 Modal 3: Dialog แก้ไขการจอง */}
-          <Dialog open={!!editBooking} onOpenChange={() => setEditBooking(null)}>
+          <Dialog
+            open={!!editBooking}
+            onOpenChange={() => setEditBooking(null)}
+          >
             <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>แก้ไขการจอง {isAdmin && <Badge className="ml-2 bg-indigo-600">Admin Mode</Badge>}</DialogTitle>
+                <DialogTitle>
+                  แก้ไขการจอง{" "}
+                  {isAdmin && (
+                    <Badge className="ml-2 bg-indigo-600">Admin Mode</Badge>
+                  )}
+                </DialogTitle>
               </DialogHeader>
 
               {editBooking && (
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    const newTimeSlots = TIME_SLOTS.filter((slot) => selectedEditTimes.includes(slot)).join(", ");
-                    if (!newTimeSlots) return alert("กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง");
+                    const newTimeSlots = TIME_SLOTS.filter((slot) =>
+                      selectedEditTimes.includes(slot),
+                    ).join(", ");
+                    if (!newTimeSlots)
+                      return alert("กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง");
 
-                    const { data: checkData, error: checkError } = await supabase
-                        .from("bookings").select("id, time_slot")
+                    const { data: checkData, error: checkError } =
+                      await supabase
+                        .from("bookings")
+                        .select("id, time_slot")
                         .eq("car_id", editBooking.car_id)
                         .eq("date", editForm.date.toISOString().split("T")[0]);
 
@@ -887,55 +1295,81 @@ export default function Dashboard() {
 
                     const conflict = checkData?.some((b) => {
                       if (b.id === editBooking.id) return false;
-                      const booked = b.time_slot.split(",").map((s: string) => s.trim());
-                      return booked.some((slot: string) => selectedEditTimes.includes(slot));
+                      const booked = b.time_slot
+                        .split(",")
+                        .map((s: string) => s.trim());
+                      return booked.some((slot: string) =>
+                        selectedEditTimes.includes(slot),
+                      );
                     });
 
-                    if (conflict) return alert("บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่");
+                    if (conflict)
+                      return alert(
+                        "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
+                      );
 
                     // 🔒 Security Check: ตอนอัปเดต ถ้าไม่ใช่แอดมิน ให้แก้ได้แค่ของตัวเอง
-                    let updateQuery = supabase.from("bookings").update({
-                      driver_name: editForm.driver_name,
-                      destination: editForm.destination,
-                      reason: editForm.reason,
-                      time_slot: newTimeSlots,
-                      date: editForm.date.toLocaleDateString("sv-SE"),
-                    }).eq("id", editBooking.id);
+                    let updateQuery = supabase
+                      .from("bookings")
+                      .update({
+                        driver_name: editForm.driver_name,
+                        destination: editForm.destination,
+                        reason: editForm.reason,
+                        time_slot: newTimeSlots,
+                        date: editForm.date.toLocaleDateString("sv-SE"),
+                      })
+                      .eq("id", editBooking.id);
 
                     if (!isAdmin) {
                       updateQuery = updateQuery.eq("user_id", user.id);
                     }
 
                     const { error: bookingError } = await updateQuery;
-                    if (bookingError) return alert("อัปเดตไม่สำเร็จ: " + bookingError.message);
+                    if (bookingError)
+                      return alert("อัปเดตไม่สำเร็จ: " + bookingError.message);
 
                     if (editStartMile && editEndMile) {
                       const { error: milesError } = await supabase
                         .from("miles")
                         .upsert(
-                          { booking_id: editBooking.id, start_mile: Number(editStartMile), end_mile: Number(editEndMile) },
+                          {
+                            booking_id: editBooking.id,
+                            start_mile: Number(editStartMile),
+                            end_mile: Number(editEndMile),
+                          },
                           { onConflict: "booking_id" },
                         );
-                      if (milesError) return alert("ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message);
+                      if (milesError)
+                        return alert(
+                          "ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message,
+                        );
                     }
-                    
+
                     await fetch("/api/line/notify-edit", {
-                      method: "POST", headers: { "Content-Type": "application/json" },
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        user_name: user.email, driver_name: editForm.driver_name,
-                        destination: editForm.destination, time_slot: newTimeSlots,
+                        user_name: user.email,
+                        driver_name: editForm.driver_name,
+                        destination: editForm.destination,
+                        time_slot: newTimeSlots,
                         date: editForm.date.toLocaleDateString("sv-SE"),
-                        car_plate: editBooking.cars?.plate || "", reason: editForm.reason,
+                        car_plate: editBooking.cars?.plate || "",
+                        reason: editForm.reason,
                       }),
                     });
 
                     await fetch("/api/telegram/notify-edit", {
-                      method: "POST", headers: { "Content-Type": "application/json" },
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        user_name: user.email, driver_name: editForm.driver_name,
-                        destination: editForm.destination, time_slot: newTimeSlots,
+                        user_name: user.email,
+                        driver_name: editForm.driver_name,
+                        destination: editForm.destination,
+                        time_slot: newTimeSlots,
                         date: editForm.date.toLocaleDateString("sv-SE"),
-                        car_plate: editBooking.cars?.plate || "", reason: editForm.reason,
+                        car_plate: editBooking.cars?.plate || "",
+                        reason: editForm.reason,
                       }),
                     });
 
@@ -945,79 +1379,163 @@ export default function Dashboard() {
                   }}
                   className="space-y-3"
                 >
-                  <label className="block text-sm font-medium">ชื่อผู้ขับ</label>
-                  <Input value={editForm.driver_name} onChange={(e) => setEditForm({ ...editForm, driver_name: e.target.value })} />
-                  
+                  <label className="block text-sm font-medium">
+                    ชื่อผู้ขับ
+                  </label>
+                  <Input
+                    value={editForm.driver_name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, driver_name: e.target.value })
+                    }
+                  />
+
                   <label className="block text-sm font-medium">สถานที่</label>
-                  <Input value={editForm.destination} onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })} />
-                  
+                  <Input
+                    value={editForm.destination}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, destination: e.target.value })
+                    }
+                  />
+
                   <label className="block text-sm font-medium">เหตุผล</label>
-                  <Input value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} />
-                  
+                  <Input
+                    value={editForm.reason}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, reason: e.target.value })
+                    }
+                  />
+
                   <div className="border-t pt-3">
-                    <label className="block text-sm font-medium">เลขไมล์เริ่มต้น</label>
-                    <Input type="number" value={editStartMile} onChange={(e) => setEditStartMile(e.target.value)} />
-                    <label className="block text-sm font-medium mt-2">เลขไมล์สิ้นสุด</label>
-                    <Input type="number" value={editEndMile} onChange={(e) => setEditEndMile(e.target.value)} />
+                    <label className="block text-sm font-medium">
+                      เลขไมล์เริ่มต้น
+                    </label>
+                    <Input
+                      type="number"
+                      value={editStartMile}
+                      onChange={(e) => setEditStartMile(e.target.value)}
+                    />
+                    <label className="block text-sm font-medium mt-2">
+                      เลขไมล์สิ้นสุด
+                    </label>
+                    <Input
+                      type="number"
+                      value={editEndMile}
+                      onChange={(e) => setEditEndMile(e.target.value)}
+                    />
                   </div>
 
                   <label className="block text-sm font-medium">วันที่</label>
                   <DatePicker
                     selected={editForm.date}
-                    onChange={(d: Date | null) => d && setEditForm({ ...editForm, date: d })}
+                    onChange={(d: Date | null) =>
+                      d && setEditForm({ ...editForm, date: d })
+                    }
                     dateFormat="dd/MM/yyyy"
                     className="border rounded-md p-2 w-full"
                   />
 
-                  <label className="block text-sm font-medium">ช่วงเวลาที่ต้องการแก้ไข</label>
+                  <label className="block text-sm font-medium">
+                    ช่วงเวลาที่ต้องการแก้ไข
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     {TIME_SLOTS.map((slot) => {
-                      const isBooked = editBookingStatus[slot] && editBookingStatus[slot] !== "ว่าง";
+                      const isBooked =
+                        editBookingStatus[slot] &&
+                        editBookingStatus[slot] !== "ว่าง";
                       const bookedBy = editBookingStatus[slot];
                       const isSelected = selectedEditTimes.includes(slot);
                       return (
                         <Button
-                          key={slot} type="button" variant={isSelected ? "default" : "outline"}
+                          key={slot}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
                           onClick={() => {
-                            if (!isBooked || bookedBy === editForm.driver_name) {
-                              setSelectedEditTimes((prev) => prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]);
+                            if (
+                              !isBooked ||
+                              bookedBy === editForm.driver_name
+                            ) {
+                              setSelectedEditTimes((prev) =>
+                                prev.includes(slot)
+                                  ? prev.filter((s) => s !== slot)
+                                  : [...prev, slot],
+                              );
                             }
                           }}
-                          disabled={isBooked && bookedBy !== editForm.driver_name}
+                          disabled={
+                            isBooked && bookedBy !== editForm.driver_name
+                          }
                           className="flex items-center justify-center gap-1"
                         >
                           {slot}
-                          {isBooked ? <Badge className="ml-1 bg-red-500">{bookedBy}</Badge> : <Badge className="ml-1 bg-green-500">ว่าง</Badge>}
+                          {isBooked ? (
+                            <Badge className="ml-1 bg-red-500">
+                              {bookedBy}
+                            </Badge>
+                          ) : (
+                            <Badge className="ml-1 bg-green-500">ว่าง</Badge>
+                          )}
                         </Button>
                       );
                     })}
                   </div>
-                  <Button type="submit" className="w-full bg-blue-600 text-white">💾 บันทึกการแก้ไข</Button>
+                  <Button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white"
+                  >
+                    💾 บันทึกการแก้ไข
+                  </Button>
                 </form>
               )}
             </DialogContent>
           </Dialog>
 
           {/* 🌟 Modal 4: Dialog สลับรถยนต์ (Swap Car) */}
-          <Dialog open={!!swapBooking} onOpenChange={() => setSwapBooking(null)}>
+          <Dialog
+            open={!!swapBooking}
+            onOpenChange={() => setSwapBooking(null)}
+          >
             <DialogContent className="w-[95vw] sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-indigo-700">
-                  <ArrowRightLeft className="w-5 h-5" /> สลับรถ / สลับคิว {isAdmin && <Badge className="bg-indigo-600 text-xs ml-2">Admin Mode</Badge>}
+                  <ArrowRightLeft className="w-5 h-5" /> สลับรถ / สลับคิว{" "}
+                  {isAdmin && (
+                    <Badge className="bg-indigo-600 text-xs ml-2">
+                      Admin Mode
+                    </Badge>
+                  )}
                 </DialogTitle>
               </DialogHeader>
 
               {swapBooking && (
                 <div className="space-y-4 pt-4">
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm space-y-1">
-                    <p><span className="text-slate-500">ผู้ขับ:</span> <b>{swapBooking.driver_name}</b></p>
-                    <p><span className="text-slate-500">วันที่:</span> <b>{swapBooking.date}</b></p>
-                    <p><span className="text-slate-500">ช่วงเวลา:</span> <b>{mergeTimeSlots(swapBooking.time_slot)}</b></p>
-                    <p><span className="text-slate-500">รถคันเดิม:</span> <Badge variant="outline" className="ml-1 bg-white text-slate-700">{swapBooking.cars?.plate}</Badge></p>
+                    <p>
+                      <span className="text-slate-500">ผู้ขับ:</span>{" "}
+                      <b>{swapBooking.driver_name}</b>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">วันที่:</span>{" "}
+                      <b>{swapBooking.date}</b>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">ช่วงเวลา:</span>{" "}
+                      <b>{mergeTimeSlots(swapBooking.time_slot)}</b>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">รถคันเดิม:</span>{" "}
+                      <Badge
+                        variant="outline"
+                        className="ml-1 bg-white text-slate-700"
+                      >
+                        {swapBooking.cars?.plate}
+                      </Badge>
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">เลือกรถคันใหม่ที่ต้องการสลับ</label>
+                    <label className="text-sm font-bold text-slate-700">
+                      เลือกรถคันใหม่ที่ต้องการสลับ
+                    </label>
                     {swapOptions.length > 0 ? (
                       <>
                         <select
@@ -1025,19 +1543,28 @@ export default function Dashboard() {
                           value={selectedNewCar}
                           onChange={(e) => setSelectedNewCar(e.target.value)}
                         >
-                          <option value="" disabled>-- คลิกลูกศรเพื่อเลือกรถ --</option>
+                          <option value="" disabled>
+                            -- คลิกลูกศรเพื่อเลือกรถ --
+                          </option>
                           {swapOptions.map((car) => (
                             <option key={car.id} value={car.id}>
-                              {car.plate} {car.isBooked ? `(สลับคิวกับ: ${car.conflictingBookings.map((b:any)=>b.driver_name).join(', ')})` : "(ว่างไม่มีคิว)"}
+                              {car.plate}{" "}
+                              {car.isBooked
+                                ? `(สลับคิวกับ: ${car.conflictingBookings.map((b: any) => b.driver_name).join(", ")})`
+                                : "(ว่างไม่มีคิว)"}
                             </option>
                           ))}
                         </select>
-                        
-                        {selectedNewCar && swapOptions.find((c) => c.id === selectedNewCar)?.isBooked && (
-                          <div className="p-3 mt-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-sm">
-                            ⚠️ <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้ จะถูกย้ายมาขับรถ <b>{swapBooking.cars?.plate}</b> แทนอัตโนมัติ
-                          </div>
-                        )}
+
+                        {selectedNewCar &&
+                          swapOptions.find((c) => c.id === selectedNewCar)
+                            ?.isBooked && (
+                            <div className="p-3 mt-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-sm">
+                              ⚠️ <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
+                              จะถูกย้ายมาขับรถ <b>{swapBooking.cars?.plate}</b>{" "}
+                              แทนอัตโนมัติ
+                            </div>
+                          )}
                       </>
                     ) : (
                       <div className="p-3 bg-slate-50 text-slate-500 rounded-xl border border-slate-200 text-sm text-center">

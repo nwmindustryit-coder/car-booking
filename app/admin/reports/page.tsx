@@ -28,6 +28,11 @@ type Row = {
   total_mile: number; // จากตาราง miles
   department: string;
   time_slot?: string;
+  driver_name?: string;
+  destination?: string;
+  reason?: string;
+  start_mile?: number;
+  end_mile?: number;
 };
 
 type AggRow = {
@@ -40,7 +45,7 @@ const toYYYYMMDD = (d: Date) => d.toLocaleDateString("sv-SE"); // YYYY-MM-DD
 
 export default function ReportsPage() {
   const [mode, setMode] = useState<"month" | "range">("month");
-  const [month, setMonth] = useState<Date>(new Date()); // picker แบบเดือน
+  const [month, setMonth] = useState<Date>(new Date());
   const [start, setStart] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
@@ -94,10 +99,10 @@ export default function ReportsPage() {
   }, [rows]);
 
   function timeSlotToMinutes(slot: string): number {
-    const [start, end] = slot.split("-").map((s) => s.trim());
-    if (!start || !end) return 0;
-    const [h1, m1] = start.split(":").map(Number);
-    const [h2, m2] = end.split(":").map(Number);
+    const [startSlot, endSlot] = slot.split("-").map((s) => s.trim());
+    if (!startSlot || !endSlot) return 0;
+    const [h1, m1] = startSlot.split(":").map(Number);
+    const [h2, m2] = endSlot.split(":").map(Number);
     return h2 * 60 + m2 - (h1 * 60 + m1);
   }
 
@@ -131,10 +136,11 @@ export default function ReportsPage() {
       const { data: bookingsRaw, error: bErr } = await supabase
         .from("bookings")
         .select(
-          `id, date, time_slot, user_id, cars!inner ( plate ), profiles:user_id ( department )`,
+          `id, date, driver_name, destination, reason, time_slot, user_id, cars!inner ( plate ), profiles:user_id ( department )`,
         )
         .gte("date", from)
-        .lte("date", to);
+        .lte("date", to)
+        .order("date", { ascending: true });
 
       if (bErr) throw bErr;
 
@@ -169,6 +175,11 @@ export default function ReportsPage() {
           department: dept,
           time_slot: b.time_slot ?? "",
           total_mile: m ? (m.total_mile ?? m.end_mile - m.start_mile) : null,
+          driver_name: b.driver_name,
+          destination: b.destination,
+          reason: b.reason,
+          start_mile: m?.start_mile,
+          end_mile: m?.end_mile,
         };
       });
 
@@ -240,14 +251,132 @@ export default function ReportsPage() {
     0,
   );
 
+  // ✨ ฟังก์ชันที่ 1: ฟังก์ชันกด Print
   const handlePrint = () => window.print();
 
+  // ✨ ฟังก์ชันที่ 2: สร้าง "รายงานการใช้รถยนต์" สำหรับส่งสรรพากร
+  const handleExportTaxLogbook = async () => {
+    try {
+      setLoading(true);
+      
+      if (rowsWithMile.length === 0) {
+        alert("ไม่พบข้อมูลการบันทึกไมล์ในช่วงเวลาที่เลือก");
+        setLoading(false);
+        return;
+      }
+
+      const groupedByCar = rowsWithMile.reduce((acc: any, curr: any) => {
+        if (!acc[curr.plate]) acc[curr.plate] = [];
+        acc[curr.plate].push(curr);
+        return acc;
+      }, {});
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "Nawamit Industry System";
+      workbook.created = new Date();
+
+      Object.entries(groupedByCar).forEach(([plate, records]: [string, any]) => {
+        const ws = workbook.addWorksheet(`ทะเบียน ${plate}`, {
+          pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 } }
+        });
+
+        ws.columns = [
+          { key: "date", width: 15 },
+          { key: "driver", width: 20 },
+          { key: "dest_reason", width: 40 },
+          { key: "start_mile", width: 15 },
+          { key: "end_mile", width: 15 },
+          { key: "total_mile", width: 15 },
+          { key: "sign_driver", width: 20 },
+          { key: "sign_admin", width: 20 },
+        ];
+
+        ws.mergeCells('A1:H1');
+        const title1 = ws.getCell('A1');
+        title1.value = "รายงานการใช้รถยนต์ (สำหรับเบิกจ่ายและแนบภาษีสรรพากร)";
+        title1.font = { name: 'TH SarabunPSK', size: 18, bold: true };
+        title1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        ws.mergeCells('A2:H2');
+        const title2 = ws.getCell('A2');
+        title2.value = `บริษัท นวมิตร อุตสาหกรรม จำกัด`;
+        title2.font = { name: 'TH SarabunPSK', size: 16, bold: true };
+        title2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        ws.mergeCells('A3:H3');
+        const title3 = ws.getCell('A3');
+        title3.value = `ทะเบียนรถ: ${plate}     ประจำรอบข้อมูล: ${rangeLabel}`;
+        title3.font = { name: 'TH SarabunPSK', size: 14, bold: true };
+        title3.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        ws.getRow(3).height = 25;
+
+        const headerRow = ws.getRow(5);
+        headerRow.values = [
+          "วัน/เดือน/ปี", "ชื่อผู้ขับขี่", "รายละเอียดการเดินทาง (สถานที่/วัตถุประสงค์)",
+          "เลขไมล์เริ่มต้น", "เลขไมล์สิ้นสุด", "ระยะทาง (กม.)", "ลายมือชื่อผู้ขับขี่", "ลายมือชื่อผู้อนุมัติ"
+        ];
+        headerRow.height = 30;
+        
+        headerRow.eachCell((cell) => {
+          cell.font = { name: 'TH SarabunPSK', size: 14, bold: true };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+        });
+
+        records.forEach((r: any) => {
+          const row = ws.addRow([
+            format(new Date(r.date), "dd/MM/yyyy", { locale: th }),
+            r.driver_name,
+            `${r.destination} (${r.reason || '-'})`,
+            r.start_mile,
+            r.end_mile,
+            r.total_mile,
+            "", 
+            ""  
+          ]);
+
+          row.height = 28;
+          row.eachCell((cell, colNumber) => {
+            cell.font = { name: 'TH SarabunPSK', size: 14 };
+            cell.alignment = { vertical: 'middle', horizontal: (colNumber === 3) ? 'left' : 'center', wrapText: colNumber === 3 };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            if ([4, 5, 6].includes(colNumber)) cell.numFmt = '#,##0';
+          });
+        });
+
+        const totalDistance = records.reduce((sum: number, r: any) => sum + r.total_mile, 0);
+        const summaryRow = ws.addRow(["", "", "รวมระยะทางที่ใช้ในรอบนี้", "", "", totalDistance, "", ""]);
+        summaryRow.height = 30;
+        summaryRow.eachCell((cell, colNum) => {
+          cell.font = { name: 'TH SarabunPSK', size: 14, bold: true };
+          cell.alignment = { horizontal: colNum === 3 ? 'right' : 'center', vertical: 'middle' };
+          if ([3, 6].includes(colNum)) {
+            cell.border = { top: { style: 'double' }, left: { style: 'thin' }, bottom: { style: 'double' }, right: { style: 'thin' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+          }
+          if (colNum === 6) cell.numFmt = '#,##0';
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      saveAs(blob, `สมุดบันทึกการใช้รถ_สรรพากร_${rangeLabel}.xlsx`);
+
+    } catch (e: any) {
+      alert("เกิดข้อผิดพลาดในการสร้างไฟล์: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✨ ฟังก์ชันที่ 3: โหลดไฟล์ Excel สรุปสถิติ Premium (ที่ผมเผลอทำหายไป)
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Nawamit Industry System';
     workbook.created = new Date();
 
-    // 🌟 สร้างฟังก์ชันขั้นเทพ สำหรับสร้างหน้า Sheet สไตล์ World-Class
     const createPremiumSheet = (
       sheetName: string, 
       reportTitle: string, 
@@ -255,50 +384,43 @@ export default function ReportsPage() {
       data: any[], 
       totals: any = null
     ) => {
-      // 1. ปิด Gridlines ดั้งเดิมของ Excel ให้หน้ากระดาษคลีนที่สุด
       const ws = workbook.addWorksheet(sheetName, {
         views: [{ showGridLines: false }]
       });
 
-      // 2. กำหนดความกว้างคอลัมน์
       ws.columns = columns.map(c => ({ width: c.width }));
 
-      // 3. ใส่ Header บริษัทและชื่อ Report (แถวที่ 2-3)
-      const lastColLetter = String.fromCharCode(64 + columns.length); // เช่น A ถึง D
+      const lastColLetter = String.fromCharCode(64 + columns.length);
       
       ws.mergeCells(`A2:${lastColLetter}2`);
       const titleCell = ws.getCell('A2');
       titleCell.value = reportTitle;
-      titleCell.font = { size: 18, bold: true, color: { argb: 'FF0F172A' }, name: 'Sarabun' }; // Slate-900
+      titleCell.font = { size: 18, bold: true, color: { argb: 'FF0F172A' }, name: 'Sarabun' };
       titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
       ws.mergeCells(`A3:${lastColLetter}3`);
       const metaCell = ws.getCell('A3');
       metaCell.value = `Nawamit Industry Co., Ltd. | รอบข้อมูล: ${rangeLabel} | พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`;
-      metaCell.font = { size: 10, color: { argb: 'FF64748B' }, name: 'Sarabun' }; // Slate-500
+      metaCell.font = { size: 10, color: { argb: 'FF64748B' }, name: 'Sarabun' };
       metaCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-      // 4. สร้างหัวตาราง (แถวที่ 5)
       const headerRow = ws.getRow(5);
       headerRow.values = columns.map(c => c.header);
       headerRow.height = 32;
       
       headerRow.eachCell((cell, colNumber) => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // พื้นหลังสีกรมท่าเข้ม (Slate-800)
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
         cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12, name: 'Sarabun' };
         cell.alignment = { vertical: 'middle', horizontal: columns[colNumber - 1].align || 'center' };
-        // ใส่เส้นขอบล่างหนาๆ ให้หัวตาราง
         cell.border = { bottom: { style: 'medium', color: { argb: 'FF0F172A' } } }; 
       });
 
-      // 5. หยอดข้อมูล (Zebra Striping)
       data.forEach((rowData, index) => {
         const row = ws.addRow(columns.map(c => rowData[c.key]));
-        row.height = 25; // เพิ่มความสูงให้บรรทัดไม่อึดอัด
+        row.height = 25;
         const isEven = index % 2 === 0;
 
         row.eachCell((cell, colNumber) => {
-          // สลับสีพื้นหลัง ขาว/เทาอ่อนสุด
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -306,36 +428,28 @@ export default function ReportsPage() {
           };
           cell.font = { size: 11, color: { argb: 'FF334155' }, name: 'Sarabun' };
           cell.alignment = { vertical: 'middle', horizontal: columns[colNumber - 1].align || 'center' };
-          // เส้นขอบล่างบางเฉียบ สีเทาอ่อนมาก
           cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } };
 
-          // Format ตัวเลขให้มีลูกน้ำ (1,000)
           if (typeof cell.value === 'number') cell.numFmt = '#,##0';
         });
       });
 
-      // 6. แถวสรุปยอดรวม (Totals) แบบเน้นๆ (ถ้ามี)
       if (totals) {
         const totalRow = ws.addRow(columns.map(c => totals[c.key] || ''));
         totalRow.height = 30;
         totalRow.eachCell((cell, colNumber) => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // Slate-100
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
           cell.font = { size: 12, bold: true, color: { argb: 'FF0F172A' }, name: 'Sarabun' };
           cell.alignment = { vertical: 'middle', horizontal: columns[colNumber - 1].align || 'center' };
           cell.border = { 
             top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            bottom: { style: 'double', color: { argb: 'FF94A3B8' } } // เส้นคู่บอกว่าจบตาราง
+            bottom: { style: 'double', color: { argb: 'FF94A3B8' } }
           };
           if (typeof cell.value === 'number') cell.numFmt = '#,##0';
         });
       }
     };
 
-    // ==========================================
-    // 🚀 เริ่มสร้าง Sheet แต่ละหน้าด้วย Layout พรีเมียม
-    // ==========================================
-
-    // --- Sheet 1: สรุปต่อทะเบียน ---
     const totalKmAll = aggregated.reduce((sum, item) => sum + item.totalKm, 0);
     const totalTripsAll = aggregated.reduce((sum, item) => sum + item.trips, 0);
     createPremiumSheet(
@@ -350,7 +464,6 @@ export default function ReportsPage() {
       { plate: 'รวมยอดสะสมทั้งหมด', trips: totalTripsAll, totalKm: totalKmAll }
     );
 
-    // --- Sheet 2: สรุปต่อแผนก ---
     createPremiumSheet(
       'สรุปต่อแผนก', 
       'รายงานสรุปสถิติการใช้งาน (แบ่งตามแผนก)',
@@ -364,7 +477,6 @@ export default function ReportsPage() {
       { department: 'รวมยอดสะสมทั้งหมด', trips: totalTripsAll, totalKm: totalKmAll, time: formatMinutesToReadable(byDepartment.reduce((s, d) => s + d.totalMinutes, 0)) }
     );
 
-    // --- Sheet 3: รายการดิบ ---
     createPremiumSheet(
       'รายการดิบ (Log)', 
       'บันทึกรายการใช้งานรถยนต์ส่วนกลางรายวัน (Raw Data)',
@@ -378,7 +490,6 @@ export default function ReportsPage() {
       rowsWithMile.map(r => ({ date: r.date, plate: r.plate, dept: r.department, slot: r.time_slot || '-', mile: r.total_mile }))
     );
 
-    // --- Sheet 4 & 5: วิเคราะห์เวลา ---
     createPremiumSheet(
       'สรุปเวลาต่อทะเบียน', 
       'รายงานวิเคราะห์เวลาการใช้งานตามรถยนต์',
@@ -401,10 +512,9 @@ export default function ReportsPage() {
       aggregatedTimeByDept.map(d => ({ ...d, time: formatMinutesToReadable(d.totalMinutes) }))
     );
 
-    // 💾 สร้างไฟล์และดาวน์โหลด
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `รายงานการใช้รถ_Nawamit_${rangeLabel}.xlsx`);
+    saveAs(blob, `รายงานสถิติการใช้รถ_Nawamit_${rangeLabel}.xlsx`);
   };
 
   return (
@@ -498,9 +608,18 @@ export default function ReportsPage() {
                 onClick={handleExportExcel}
                 disabled={aggregated.length === 0}
                 className="h-10 px-4 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale"
-                title="ดาวน์โหลดไฟล์ Excel"
+                title="ดาวน์โหลดไฟล์ Excel สรุปสถิติ"
               >
-                <FileSpreadsheet className="w-4 h-4" /> Excel
+                <FileSpreadsheet className="w-4 h-4" /> สถิติรวม
+              </button>
+
+              <button
+                onClick={handleExportTaxLogbook}
+                disabled={loading}
+                className="h-10 px-4 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale shadow-sm"
+                title="ดาวน์โหลดสมุดบันทึกการใช้รถสำหรับสรรพากร"
+              >
+                <FileSpreadsheet className="w-4 h-4" /> สมุดเบิกสรรพากร
               </button>
             </div>
           </div>

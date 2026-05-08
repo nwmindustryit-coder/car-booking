@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
-// import { Button } from "@/components/ui/button" // (ถ้าไม่ได้ใช้ สามารถเอาออกได้ครับ)
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminCarMaintenance() {
   const [cars, setCars] = useState<any[]>([]);
@@ -25,28 +25,56 @@ export default function AdminCarMaintenance() {
     load();
   }, []);
 
-  // ✅ ปรับปรุงให้ State อัปเดตทันทีเมื่อบันทึก DB สำเร็จ
+  // ✅ ฟังก์ชันบันทึกข้อมูลเข้าศูนย์ (และแก้อาการ Error ข้อมูลวันที่ว่าง)
   const saveMaintenance = async (car_id: number, fields: any) => {
+    // กรองค่าที่เป็น String ว่าง "" ให้กลายเป็น null ก่อนบันทึก
+    const cleanedFields = { ...fields };
+    Object.keys(cleanedFields).forEach((key) => {
+      if (cleanedFields[key] === "") {
+        cleanedFields[key] = null;
+      }
+    });
+
     const res = await supabase
       .from("car_maintenance")
-      .upsert({ car_id, ...fields }, { onConflict: "car_id" });
+      .upsert({ car_id, ...cleanedFields }, { onConflict: "car_id" });
 
     if (!res.error) {
       setMaintenance((prev) => {
         const exists = prev.find((m) => m.car_id === car_id);
         if (exists) {
-          return prev.map((m) => (m.car_id === car_id ? { ...m, ...fields } : m));
+          return prev.map((m) => (m.car_id === car_id ? { ...m, ...cleanedFields } : m));
         }
-        return [...prev, { car_id, ...fields }];
+        return [...prev, { car_id, ...cleanedFields }];
       });
-      // แจ้งเตือนแบบเนียนๆ ว่าบันทึกแล้ว (หรือจะเอา alert ออกแล้วใช้ Toast UI แทนก็ได้ครับ)
-      console.log("บันทึกข้อมูลการเข้าศูนย์สำเร็จ"); 
     } else {
       alert("เกิดข้อผิดพลาด: " + res.error.message);
     }
   };
 
-  // ✅ ปรับปรุงให้ State อัปเดตทันที
+  // ✅ ฟังก์ชันบันทึกวันหมดอายุเอกสาร (แก้อาการ Error ข้อมูลวันที่ว่าง)
+  const updateCarDocument = async (id: number, fields: any) => {
+    // กรองค่าที่เป็น String ว่าง "" ให้กลายเป็น null ก่อนบันทึก
+    const cleanedFields = { ...fields };
+    Object.keys(cleanedFields).forEach((key) => {
+      if (cleanedFields[key] === "") {
+        cleanedFields[key] = null;
+      }
+    });
+
+    const { error } = await supabase
+      .from("cars")
+      .update(cleanedFields)
+      .eq("id", id);
+
+    if (!error) {
+      setCars((prev) => prev.map((c) => (c.id === id ? { ...c, ...cleanedFields } : c)));
+      console.log("บันทึกข้อมูลสำเร็จ");
+    } else {
+      alert("เกิดข้อผิดพลาด: " + error.message);
+    }
+  };
+
   const updateMileage = async (car_id: number, current_mileage: number) => {
     const res = await supabase
       .from("car_mileage_log")
@@ -63,147 +91,166 @@ export default function AdminCarMaintenance() {
     }
   };
 
-  // ✅ แก้ไข Fatal Error ใส่ () ครอบ return
   if (loading) {
     return (
       <main className="flex flex-col items-center justify-center h-screen text-blue-600">
-        <svg
-          className="animate-spin h-8 w-8 mb-3 text-blue-500"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
         </svg>
         <p className="text-gray-500 animate-pulse">กำลังโหลดข้อมูลระบบ...</p>
       </main>
     );
   }
 
-  const ALERT_OPTIONS = [500, 800, 1000, 1200, 1500, 2000];
+  const ALERT_MILEAGE_OPTIONS = [500, 800, 1000, 1200, 1500, 2000];
+  const ALERT_DAYS_OPTIONS = [7, 15, 30, 45, 60, 90]; // ตัวเลือกแจ้งเตือนล่วงหน้า (วัน)
 
   return (
     <>
       <Navbar />
-
-      <main className="max-w-4xl mx-auto p-4 space-y-6">
-        <h1 className="text-xl font-semibold text-slate-800">ระบบจัดการระยะเข้าศูนย์</h1>
+      <main className="max-w-5xl mx-auto p-4 space-y-6">
+        <h1 className="text-xl font-bold text-slate-800">⚙️ ระบบจัดการรถและระยะเข้าศูนย์ (Admin)</h1>
 
         {cars.map((car) => {
           const m = maintenance.find((x) => x.car_id === car.id) || {};
           const log = mileageLog.find((x) => x.car_id === car.id) || {};
-
-          const next = m.next_service_mileage ?? 0;
+          
           const current = log.current_mileage ?? 0;
-          const alert_before = m.alert_before_mileage ?? 1000;
-
+          const next = m.next_service_mileage ?? 0;
+          const alert_before_mileage = m.alert_before_mileage ?? 1000;
           const remaining = next - current;
 
+          // ค่าเริ่มต้นการแจ้งเตือนเอกสารคือ 30 วัน ถ้าไม่ได้ตั้งค่าไว้
+          const alert_before_days = car.alert_before_days ?? 30;
+
           return (
-            <div key={car.id} className="p-5 border border-slate-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-              <h2 className="text-lg font-bold text-blue-700 mb-4 border-b pb-2">
-                🚗 รถทะเบียน {car.plate}
+            <div key={car.id} className="p-6 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all">
+              <h2 className="text-lg font-bold text-blue-700 mb-4 border-b pb-2 flex items-center gap-2">
+                🚗 รถทะเบียน {car.plate} <span className="text-sm font-normal text-slate-400">({car.brand || 'รถส่วนกลาง'})</span>
               </h2>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* ไมล์ปัจจุบัน */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">ไมล์ปัจจุบัน</label>
-                  <input
-                    type="number"
-                    defaultValue={current}
-                    className="border border-slate-300 p-2 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    onBlur={(e) => updateMileage(car.id, Number(e.target.value))}
-                  />
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* --- หมวดที่ 1: ระยะทางและไมล์ --- */}
+                <div className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                  <h3 className="font-bold text-blue-800 text-sm">📍 ข้อมูลระยะทาง</h3>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ไมล์ปัจจุบัน</label>
+                    <input
+                      type="number"
+                      defaultValue={current}
+                      className="border border-slate-300 p-2 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      onBlur={(e) => updateMileage(car.id, Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ระยะเข้าศูนย์ถัดไป (กม.)</label>
+                    <input
+                      type="number"
+                      defaultValue={m.next_service_mileage}
+                      className="border border-slate-300 p-2 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      onBlur={(e) => saveMaintenance(car.id, { next_service_mileage: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">แจ้งเตือนเข้าศูนย์ล่วงหน้า</label>
+                    <select
+                      value={alert_before_mileage}
+                      className="border border-slate-300 p-2 rounded-md w-full bg-white outline-none"
+                      onChange={(e) => saveMaintenance(car.id, { alert_before_mileage: Number(e.target.value) })}
+                    >
+                      {ALERT_MILEAGE_OPTIONS.map((val) => (
+                        <option key={val} value={val}>{val.toLocaleString()} กม.</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* ระยะเข้าศูนย์ */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">ระยะเข้าศูนย์ครั้งถัดไป</label>
-                  <input
-                    type="number"
-                    defaultValue={m.next_service_mileage}
-                    className="border border-slate-300 p-2 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    onBlur={(e) =>
-                      saveMaintenance(car.id, { next_service_mileage: Number(e.target.value) })
-                    }
-                  />
+                {/* --- หมวดที่ 2: วันที่ซ่อมบำรุง --- */}
+                <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <h3 className="font-bold text-slate-700 text-sm">📅 แผนซ่อมบำรุง</h3>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">วันที่เข้าศูนย์ล่าสุด</label>
+                    <input
+                      type="date"
+                      defaultValue={m.last_service_date || ""}
+                      className="border border-slate-300 p-2 rounded-md w-full outline-none bg-white"
+                      onBlur={(e) => saveMaintenance(car.id, { last_service_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">วันที่นัดครั้งถัดไป</label>
+                    <input
+                      type="date"
+                      defaultValue={m.next_service_date || ""}
+                      className="border border-slate-300 p-2 rounded-md w-full outline-none bg-white"
+                      onBlur={(e) => saveMaintenance(car.id, { next_service_date: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                {/* วันที่เข้าศูนย์ */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">วันที่เข้าศูนย์ครั้งล่าสุด</label>
-                  <input
-                    type="date"
-                    defaultValue={m.last_service_date || ""}
-                    className="border border-slate-300 p-2 rounded-md w-full outline-none focus:ring-2 focus:ring-blue-500"
-                    onBlur={(e) => saveMaintenance(car.id, { last_service_date: e.target.value })}
-                  />
-                </div>
+                {/* --- ✨ หมวดที่ 3: ภาษี / พ.ร.บ. / ประกัน --- */}
+                <div className="space-y-4 bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                  <h3 className="font-bold text-amber-800 text-sm flex items-center justify-between">
+                    📄 วันหมดอายุเอกสาร
+                  </h3>
+                  
+                  {/* เพิ่มตัวเลือกตั้งค่าการแจ้งเตือนเอกสารล่วงหน้า */}
+                  <div className="pb-3 border-b border-amber-200/50">
+                    <label className="block text-xs font-medium text-amber-700 mb-1">แจ้งเตือนเอกสารล่วงหน้า</label>
+                    <select
+                      value={alert_before_days}
+                      className="border border-slate-300 p-1.5 rounded-md w-full text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500 text-amber-700 font-medium"
+                      onChange={(e) => updateCarDocument(car.id, { alert_before_days: Number(e.target.value) })}
+                    >
+                      {ALERT_DAYS_OPTIONS.map((val) => (
+                        <option key={val} value={val}>{val} วัน</option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* กำหนดครั้งหน้า */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">วันที่กำหนดเข้าศูนย์ครั้งหน้า</label>
-                  <input
-                    type="date"
-                    defaultValue={m.next_service_date || ""}
-                    className="border border-slate-300 p-2 rounded-md w-full outline-none focus:ring-2 focus:ring-blue-500"
-                    onBlur={(e) => saveMaintenance(car.id, { next_service_date: e.target.value })}
-                  />
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ภาษีรถยนต์</label>
+                    <input
+                      type="date"
+                      defaultValue={car.tax_expire || ""}
+                      className="border border-slate-300 p-2 rounded-md w-full outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                      onBlur={(e) => updateCarDocument(car.id, { tax_expire: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">พ.ร.บ.</label>
+                    <input
+                      type="date"
+                      defaultValue={car.act_expire || ""}
+                      className="border border-slate-300 p-2 rounded-md w-full outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                      onBlur={(e) => updateCarDocument(car.id, { act_expire: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ประกันภัย</label>
+                    <input
+                      type="date"
+                      defaultValue={car.insurance_expire || ""}
+                      className="border border-slate-300 p-2 rounded-md w-full outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                      onBlur={(e) => updateCarDocument(car.id, { insurance_expire: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Alert ก่อนล่วงหน้า */}
-                <div className="w-full md:w-1/2">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">แจ้งเตือนล่วงหน้า (กม.)</label>
-                  <select
-                    value={alert_before} // ใช้ value แทน defaultValue เพื่อให้ซิงค์กับ State เสมอ
-                    className="border border-slate-300 p-2 rounded-md w-full bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) =>
-                      saveMaintenance(car.id, { alert_before_mileage: Number(e.target.value) })
-                    }
-                  >
-                    {/* ✅ ป้องกันการแสดงตัวเลือกซ้ำซ้อน */}
-                    {ALERT_OPTIONS.includes(alert_before) ? null : (
-                      <option value={alert_before}>{alert_before} กม. (ค่าที่ตั้งไว้)</option>
-                    )}
-                    {ALERT_OPTIONS.map((val) => (
-                      <option key={val} value={val}>
-                        {val} กม.
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* แสดงผลระยะคงเหลือ */}
-                <div className="w-full md:w-1/2 md:text-right bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <p className="text-sm text-slate-600">
-                    ระยะทางคงเหลือ:{" "}
-                    <span
-                      className={`text-xl ml-1 ${
-                        remaining <= alert_before
-                          ? remaining <= 0
-                            ? "text-red-600 font-bold"
-                            : "text-orange-500 font-bold"
-                          : "text-emerald-600 font-bold"
-                      }`}
-                    >
+              {/* ส่วนแสดงสถานะสรุปด้านล่าง Card */}
+              <div className="mt-6 flex flex-wrap gap-4 items-center justify-between bg-slate-50 p-4 rounded-xl">
+                 <div className="text-sm">
+                    ระยะทางคงเหลือ: 
+                    <span className={`text-lg font-bold ml-2 ${
+                      remaining <= alert_before_mileage ? (remaining <= 0 ? "text-red-600" : "text-orange-500") : "text-emerald-600"
+                    }`}>
                       {remaining.toLocaleString()} กม.
                     </span>
-                  </p>
-                  {remaining <= 0 && (
-                    <p className="text-xs text-red-500 mt-1">⚠️ ถึงกำหนดเข้าศูนย์แล้ว!</p>
-                  )}
-                  {remaining > 0 && remaining <= alert_before && (
-                    <p className="text-xs text-orange-500 mt-1">⚠️ ใกล้ถึงกำหนดเข้าศูนย์</p>
-                  )}
-                </div>
+                 </div>
+                 {remaining <= 0 && <Badge className="bg-red-600 text-white animate-pulse">ถึงกำหนดเข้าศูนย์!</Badge>}
+                 {remaining > 0 && remaining <= alert_before_mileage && <Badge className="bg-orange-500 text-white">ใกล้ถึงกำหนด</Badge>}
               </div>
             </div>
           );

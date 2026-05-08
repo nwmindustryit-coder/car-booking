@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import dynamic from "next/dynamic";
+
+// ✅ 1. Import ReactQuill แบบไม่ใช้ SSR และดึง CSS มาด้วย
+import "react-quill-new/dist/quill.snow.css"; 
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 
 export default function AnnouncementPopup() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -10,13 +15,11 @@ export default function AnnouncementPopup() {
 
   useEffect(() => {
     const checkAnnouncement = async () => {
-      // 1. ตรวจสอบว่าวันนี้ผู้ใช้เคยกด "ปิดวันนี้" ไปแล้วหรือยัง?
       const hiddenDate = localStorage.getItem("hideAnnouncementDate");
-      const today = new Date().toLocaleDateString("sv-SE"); // format YYYY-MM-DD
+      const today = new Date().toLocaleDateString("sv-SE"); 
       
-      if (hiddenDate === today) return; // ถ้าเคยซ่อนของวันนี้แล้ว ก็จบการทำงานไปเลย
+      if (hiddenDate === today) return;
 
-      // 2. ถ้ายังไม่เคยซ่อน ไปดึงประกาศที่เปิด Active อยู่มาแสดง
       const { data, error } = await supabase
         .from("announcements")
         .select("*")
@@ -24,8 +27,19 @@ export default function AnnouncementPopup() {
         .order("created_at", { ascending: false });
 
       if (!error && data && data.length > 0) {
-        setAnnouncements(data);
-        setIsOpen(true); // สั่งเปิด Popup
+        const now = new Date();
+
+        const validAnnouncements = data.filter((ann) => {
+          if (!ann.start_date || !ann.end_date) return true;
+          const startDate = new Date(ann.start_date);
+          const endDate = new Date(ann.end_date);
+          return now >= startDate && now <= endDate;
+        });
+
+        if (validAnnouncements.length > 0) {
+          setAnnouncements(validAnnouncements);
+          setIsOpen(true);
+        }
       }
     };
 
@@ -57,15 +71,33 @@ export default function AnnouncementPopup() {
           </button>
         </div>
 
-        {/* เนื้อหาประกาศ (รองรับหลายประกาศพร้อมกัน) */}
+        {/* เนื้อหาประกาศ */}
         <div className="p-6 overflow-y-auto space-y-8 flex-1">
+          
+          {/* ✨ CSS สำหรับซ่อนกรอบของ Quill ให้ดูเนียนไปกับพื้นหลัง */}
+          <style dangerouslySetInnerHTML={{__html: `
+            .view-only-quill .ql-container.ql-snow {
+              border: none !important;
+              font-family: inherit !important;
+              font-size: 16px !important;
+            }
+            .view-only-quill .ql-editor {
+              padding: 0 !important;
+            }
+          `}} />
+
           {announcements.map((ann, idx) => (
             <div key={ann.id} className={idx > 0 ? "pt-8 border-t border-slate-200" : ""}>
-              {/* ✅ ส่วนนี้จะแปลง HTML จาก ReactQuill มาเป็นหน้าตาจริงๆ */}
-              <div 
-                className="prose prose-blue max-w-none text-slate-700"
-                dangerouslySetInnerHTML={{ __html: ann.content }} 
+              
+              {/* ✅ 2. ใช้ ReactQuill โหมดอ่านอย่างเดียว (readOnly) และซ่อนแถบเครื่องมือ (toolbar: false) */}
+              <ReactQuill
+                value={ann.content}
+                readOnly={true}
+                theme="snow"
+                modules={{ toolbar: false }}
+                className="view-only-quill text-slate-700"
               />
+
             </div>
           ))}
         </div>
