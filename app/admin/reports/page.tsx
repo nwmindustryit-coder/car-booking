@@ -277,7 +277,14 @@ export default function ReportsPage() {
 
       Object.entries(groupedByCar).forEach(([plate, records]: [string, any]) => {
         const ws = workbook.addWorksheet(`ทะเบียน ${plate}`, {
-          pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 } }
+          pageSetup: { 
+            paperSize: 9, 
+            orientation: 'landscape', 
+            fitToPage: true, 
+            fitToWidth: 1, 
+            fitToHeight: 0, 
+            margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } 
+          }
         });
 
         ws.columns = [
