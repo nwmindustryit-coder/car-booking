@@ -45,6 +45,16 @@ export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -176,135 +186,129 @@ export default function BookingPage() {
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen bg-slate-50 p-4">
-        <div className="p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center w-full max-w-sm text-center">
+      <main className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 p-4 transition-colors duration-300">
+        <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex flex-col items-center w-full max-w-sm text-center border dark:border-slate-700">
           <Clock className="w-12 h-12 text-blue-500 animate-pulse mb-4" />
-          <p className="text-slate-600 font-medium text-lg">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium text-lg">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-12">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 pb-12 transition-colors duration-300">
       <Navbar />
       <main className="p-3 sm:p-6 max-w-3xl mx-auto mt-2 sm:mt-4">
         
         {/* Header Title */}
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-              <CalendarCheck className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 shrink-0" /> ทำรายการจองรถ
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+              <CalendarCheck className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400 shrink-0" /> ทำรายการจองรถ
             </h1>
-            <p className="text-slate-500 mt-1 text-sm sm:text-base">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการจองรถส่วนกลาง</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm sm:text-base">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการจองรถส่วนกลาง</p>
           </div>
         </div>
 
-        <Card className="border-none shadow-xl rounded-2xl bg-white overflow-visible sm:overflow-hidden">
-          {/* ✨ แก้ Padding ให้เล็กลงบนมือถือ */}
+        <Card className="border-none shadow-xl rounded-2xl bg-white dark:bg-slate-800 dark:border dark:border-slate-700 overflow-visible sm:overflow-hidden transition-colors duration-300">
           <CardContent className="p-4 sm:p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               
               {/* Row 1: วันที่ & เลือกรถ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">วันที่จอง</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">วันที่จอง</label>
                   <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <CalendarDays className="h-5 w-5 text-slate-400" />
+                      <CalendarDays className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                     </div>
-                    {/* ✨ ใส่ wrapperClassName="w-full" เพื่อแก้บั๊ก DatePicker บนมือถือ */}
                     <DatePicker
                       selected={date}
                       onChange={setDate}
                       wrapperClassName="w-full" 
-                      className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 font-medium"
+                      className="w-full pl-10 pr-4 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white font-medium"
                       dateFormat="dd/MM/yyyy"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">ทะเบียนรถ</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">ทะเบียนรถ</label>
                   <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <CarFront className="h-5 w-5 text-slate-400" />
+                      <CarFront className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <select
-                      className="w-full pl-10 pr-10 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 font-medium appearance-none"
+                      className="w-full pl-10 pr-10 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white font-medium appearance-none"
                       value={form.car_id}
                       onChange={(e) => setForm({ ...form, car_id: e.target.value })}
                       required
                     >
-                      <option value="" disabled>-- เลือกรถที่ต้องการ --</option>
+                      <option value="" disabled className="dark:text-slate-400">-- เลือกรถที่ต้องการ --</option>
                       {cars.map((c) => (
-                        <option key={c.id} value={c.id}>
+                        <option key={c.id} value={c.id} className="dark:bg-slate-800 dark:text-white">
                           {c.plate} {c.brand ? `(${c.brand})` : ''}
                         </option>
                       ))}
                     </select>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">▼</div>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">▼</div>
                   </div>
                 </div>
               </div>
 
               {/* ชื่อผู้ขับ */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">ชื่อผู้ขับ</label>
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">ชื่อผู้ขับ</label>
                 <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <User className="h-5 w-5 text-slate-400" />
+                    <User className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                   </div>
                   
                   <input
                     autoComplete="off"
                     placeholder="ระบุชื่อ-นามสกุล หรือคลิกเพื่อเลือกประวัติ"
-                    className="w-full pl-10 pr-10 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 relative z-10"
+                    className="w-full pl-10 pr-10 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white dark:placeholder-slate-400 relative z-10"
                     value={form.driver_name}
                     onChange={(e) => {
                       setForm({ ...form, driver_name: e.target.value });
-                      setShowDriverDropdown(true); // พิมพ์ปุ๊บให้เปิดกล่องเสมอ
+                      setShowDriverDropdown(true);
                     }}
                     onFocus={() => setShowDriverDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowDriverDropdown(false), 200)} // หน่วงเวลาปิดนิดนึงเพื่อให้กดเลือกชื่อทัน
+                    onBlur={() => setTimeout(() => setShowDriverDropdown(false), 200)}
                     required
                   />
 
-                  {/* ไอคอนลูกศรเพื่อบอกว่ามี Dropdown */}
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showDriverDropdown ? 'rotate-180 text-blue-500' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${showDriverDropdown ? 'rotate-180 text-blue-500 dark:text-blue-400' : ''}`} />
                   </div>
 
-                  {/* กล่อง Dropdown ที่สร้างขึ้นมาเอง */}
                   {showDriverDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 py-1">
                       {pastDrivers
                         .filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase()))
                         .map((name, index) => (
                           <div
                             key={index}
-                            className="px-4 py-3 text-slate-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors border-b border-slate-50 last:border-none flex items-center gap-2"
+                            className="px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-none flex items-center gap-2"
                             onMouseDown={(e) => {
-                              e.preventDefault(); // ป้องกันไม่ให้ input เสีย focus ก่อนคลิกติด
+                              e.preventDefault();
                               setForm({ ...form, driver_name: name });
                               setShowDriverDropdown(false);
                             }}
                           >
-                            <User className="w-4 h-4 text-slate-300" />
+                            <User className="w-4 h-4 text-slate-300 dark:text-slate-500" />
                             {name}
                           </div>
                       ))}
                       
-                      {/* กรณีพิมพ์ชื่อใหม่ที่ไม่เคยมีในระบบ */}
                       {pastDrivers.filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase())).length === 0 && (
-                        <div className="px-4 py-3 text-slate-500 text-sm flex items-center gap-2 bg-slate-50/50 italic">
-                           ✨ กดบันทึกเพื่อใช้ชื่อ "{form.driver_name}" เป็นชื่อใหม่
+                        <div className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/50 italic">
+                            ✨ กดบันทึกเพื่อใช้ชื่อ "{form.driver_name}" เป็นชื่อใหม่
                         </div>
                       )}
                       
-                      {/* กรณีไม่เคยมีประวัติเลย (ระบบใหม่) */}
                       {pastDrivers.length === 0 && !form.driver_name && (
-                         <div className="px-4 py-3 text-slate-400 text-sm italic text-center">
+                         <div className="px-4 py-3 text-slate-400 dark:text-slate-500 text-sm italic text-center">
                            ยังไม่มีประวัติรายชื่อ พิมพ์ชื่อใหม่ได้เลยครับ
                          </div>
                       )}
@@ -315,20 +319,19 @@ export default function BookingPage() {
 
               {/* เลือกช่วงเวลา */}
               <div className="space-y-3 pt-2">
-                <label className="text-sm font-semibold text-slate-700 flex flex-wrap items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-600" /> 
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex flex-wrap items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" /> 
                   เลือกช่วงเวลา 
-                  <span className="text-slate-400 font-normal text-[11px] sm:text-xs">
+                  <span className="text-slate-400 dark:text-slate-500 font-normal text-[11px] sm:text-xs">
                     (เลือกได้มากกว่า 1 ช่วง)
                   </span>
                 </label>
                 
                 {!form.car_id ? (
-                  <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-slate-500 text-sm">
+                  <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 text-center text-slate-500 dark:text-slate-400 text-sm transition-colors">
                     กรุณาเลือกรถเพื่อดูช่วงเวลาที่ว่าง
                   </div>
                 ) : (
-                  // ✨ ปรับ Grid ให้รองรับจอมือถือเล็กมากๆ (เหลือ 1 คอลัมน์ถ้าจอเล็กจัด)
                   <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {TIME_SLOTS.map((slot) => {
                       const isBooked = bookingStatus[slot] && bookingStatus[slot] !== "ว่าง";
@@ -343,16 +346,16 @@ export default function BookingPage() {
                           className={`
                             relative p-3 rounded-xl border text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 min-h-[60px]
                             ${isBooked 
-                              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-70' 
+                              ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70' 
                               : isSelected 
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-md transform scale-[1.02]' 
-                                : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50'
+                                ? 'bg-blue-600 dark:bg-blue-500 border-blue-600 dark:border-blue-500 text-white shadow-md transform scale-[1.02]' 
+                                : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600'
                             }
                           `}
                         >
                           <span className="whitespace-nowrap">{slot}</span>
                           {isBooked ? (
-                            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full mt-1 w-full text-center truncate">
+                            <span className="text-[10px] text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full mt-1 w-full text-center truncate">
                               จองแล้ว: {bookingStatus[slot]}
                             </span>
                           ) : isSelected ? (
@@ -368,14 +371,14 @@ export default function BookingPage() {
               {/* สถานที่ & เหตุผล */}
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">สถานที่ไป</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">สถานที่ไป</label>
                   <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MapPin className="h-5 w-5 text-slate-400" />
+                      <MapPin className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <input
                       placeholder="ระบุสถานที่ปลายทาง"
-                      className="w-full pl-10 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                      className="w-full pl-10 pr-4 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white dark:placeholder-slate-400"
                       value={form.destination}
                       onChange={(e) => setForm({ ...form, destination: e.target.value })}
                       required
@@ -384,15 +387,15 @@ export default function BookingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">เหตุผลการจอง</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">เหตุผลการจอง</label>
                   <div className="relative w-full">
                     <div className="absolute top-3 left-3 pointer-events-none">
-                      <AlignLeft className="h-5 w-5 text-slate-400" />
+                      <AlignLeft className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <textarea
                       placeholder="ระบุรายละเอียดหรือเหตุผลการใช้งาน"
                       rows={3}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 resize-none"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white dark:placeholder-slate-400 resize-none"
                       value={form.reason}
                       onChange={(e) => setForm({ ...form, reason: e.target.value })}
                       required
@@ -405,7 +408,7 @@ export default function BookingPage() {
               <div className="pt-4 space-y-3">
                 <Button
                   type="submit"
-                  className="w-full h-12 sm:h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"
+                  className="w-full h-12 sm:h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
@@ -427,7 +430,7 @@ export default function BookingPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-12 text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-all"
+                    className="w-full h-12 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all bg-white dark:bg-slate-800"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" /> ยกเลิกและกลับหน้าหลัก
                   </Button>

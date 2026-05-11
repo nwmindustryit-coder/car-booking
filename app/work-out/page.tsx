@@ -31,6 +31,9 @@ export default function WorkOutPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // แบบฟอร์ม
   const [date, setDate] = useState("");
   const [place, setPlace] = useState("");
@@ -44,6 +47,29 @@ export default function WorkOutPage() {
   const [editId, setEditId] = useState<string | null>(null);
 
   const router = useRouter();
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -68,11 +94,11 @@ export default function WorkOutPage() {
         .order("date", { ascending: false });
 
       setRows(data ?? []);
-      setEmployeeName(userData.user.user_metadata.full_name ?? "");
+      setEmployeeName(userData.user.user_metadata?.full_name ?? "");
       setLoading(false);
     };
     load();
-  }, []);
+  }, [router]);
 
   const calcHours = () => {
     if (!startTime || !endTime) return 0;
@@ -171,12 +197,12 @@ export default function WorkOutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <Navbar />
         <main className="flex flex-col items-center justify-center h-[80vh]">
-          <div className="p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center">
-            <Activity className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-            <p className="text-slate-600 font-medium text-lg">
+          <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex flex-col items-center border dark:border-slate-700">
+            <Activity className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+            <p className="text-slate-600 dark:text-slate-300 font-medium text-lg">
               กำลังโหลดข้อมูล...
             </p>
           </div>
@@ -186,35 +212,51 @@ export default function WorkOutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-12">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 pb-12 transition-colors duration-300">
       <Navbar />
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 mt-4">
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-              <Briefcase className="w-8 h-8 text-blue-600" />{" "}
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+              <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />{" "}
               บันทึกเวลาทำงานนอกสถานที่
             </h1>
-            <p className="text-slate-500 mt-1 text-sm sm:text-base">
+            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm sm:text-base">
               ระบบบันทึกเวลาเพื่อคำนวณเบี้ยเลี้ยงการปฏิบัติงานนอกพื้นที่
             </p>
           </div>
-          <Button
-            onClick={() => router.push("/work-out/report")}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-2 h-11 px-6 rounded-xl transition-transform active:scale-95"
-          >
-            <FileText className="w-4 h-4" /> ออกรายงาน
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* 🌙 ปุ่ม Toggle Dark Mode */}
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors h-11 px-4 rounded-xl"
+            >
+              {isDarkMode ? (
+                <Sun className="w-4 h-4 mr-2 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+              )}
+              {isDarkMode ? "Light Mode" : "Dark Mode"}
+            </Button>
+
+            <Button
+              onClick={() => router.push("/work-out/report")}
+              className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white shadow-md flex items-center gap-2 h-11 px-6 rounded-xl transition-transform active:scale-95"
+            >
+              <FileText className="w-4 h-4" /> ออกรายงาน
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* 🟢 ส่วนฟอร์มกรอกข้อมูล */}
           <div className="lg:col-span-7 space-y-6">
-            <Card className="border-none shadow-xl rounded-2xl bg-white overflow-hidden">
-              <div className="bg-blue-50/50 border-b border-slate-100 px-6 py-4">
-                <CardTitle className="text-blue-800 flex items-center gap-2 text-lg">
+            <Card className="border-none shadow-xl rounded-2xl bg-white dark:bg-slate-800 overflow-hidden transition-colors">
+              <div className="bg-blue-50/50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 px-6 py-4">
+                <CardTitle className="text-blue-800 dark:text-blue-400 flex items-center gap-2 text-lg">
                   {editId ? (
                     <Pencil className="w-5 h-5" />
                   ) : (
@@ -229,26 +271,26 @@ export default function WorkOutPage() {
                 {/* แถว 1: ชื่อ & แผนก */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <User className="w-4 h-4 text-slate-400" /> ชื่อพนักงาน
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-slate-400 dark:text-slate-500" /> ชื่อพนักงาน
                     </label>
                     <input
                       type="text"
                       value={employeeName}
                       onChange={(e) => setEmployeeName(e.target.value)}
-                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                      className="w-full h-11 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white dark:placeholder-slate-400"
                       placeholder="ระบุชื่อพนักงาน"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4 text-slate-400" /> แผนก
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Briefcase className="w-4 h-4 text-slate-400 dark:text-slate-500" /> แผนก
                     </label>
                     <input
                       type="text"
                       value={department}
                       disabled
-                      className="w-full h-11 bg-slate-100 border border-slate-200 rounded-xl px-4 text-slate-500 cursor-not-allowed"
+                      className="w-full h-11 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 text-slate-500 dark:text-slate-400 cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -256,66 +298,66 @@ export default function WorkOutPage() {
                 {/* แถว 2: วันที่ & สถานที่ */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <CalendarDays className="w-4 h-4 text-slate-400" />{" "}
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <CalendarDays className="w-4 h-4 text-slate-400 dark:text-slate-500" />{" "}
                       วันที่ปฏิบัติงาน
                     </label>
                     <input
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                      className="w-full h-11 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-slate-400" /> สถานที่
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-slate-400 dark:text-slate-500" /> สถานที่
                     </label>
                     <input
                       value={place}
                       onChange={(e) => setPlace(e.target.value)}
-                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700"
+                      className="w-full h-11 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white dark:placeholder-slate-400"
                       placeholder="ระบุสถานที่ทำงาน"
                     />
                   </div>
                 </div>
 
                 {/* แถว 3: เวลา & ค้างคืน */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-xl">
                   <div className="space-y-1.5 col-span-1">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                       <Sun className="w-4 h-4 text-orange-400" /> เวลาเริ่ม
                     </label>
                     <input
                       type="time"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full h-11 bg-white border border-slate-200 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 shadow-sm"
+                      className="w-full h-11 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 dark:text-white shadow-sm"
                     />
                   </div>
                   <div className="space-y-1.5 col-span-1">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                       <Moon className="w-4 h-4 text-indigo-400" /> เวลากลับ
                     </label>
                     <input
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full h-11 bg-white border border-slate-200 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 shadow-sm"
+                      className="w-full h-11 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 dark:text-white shadow-sm"
                     />
                   </div>
                   <div className="space-y-1.5 col-span-2 sm:col-span-1 flex flex-col justify-end">
-                    <label className="text-sm font-semibold text-slate-700 mb-1">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       สถานะค้างคืน
                     </label>
                     <label
-                      className={`flex items-center justify-center gap-2 h-11 border rounded-lg cursor-pointer transition-all select-none ${stayOver ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-medium" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                      className={`flex items-center justify-center gap-2 h-11 border rounded-lg cursor-pointer transition-all select-none ${stayOver ? "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700/50 text-indigo-700 dark:text-indigo-400 font-medium" : "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600"}`}
                     >
                       <input
                         type="checkbox"
                         checked={stayOver}
                         onChange={() => setStayOver(!stayOver)}
-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-indigo-500"
                       />
                       ค้างคืน (Overnight)
                     </label>
@@ -323,7 +365,7 @@ export default function WorkOutPage() {
                 </div>
 
                 {/* กล่องสรุปผล */}
-                <div className="bg-blue-600 text-white rounded-xl p-4 flex items-center justify-between shadow-md">
+                <div className="bg-blue-600 dark:bg-blue-700 text-white rounded-xl p-4 flex items-center justify-between shadow-md transition-colors">
                   <div className="flex items-center gap-3">
                     <Calculator className="w-8 h-8 opacity-80" />
                     <div>
@@ -336,13 +378,13 @@ export default function WorkOutPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right border-l border-blue-400/50 pl-4">
+                  <div className="text-right border-l border-blue-400/50 dark:border-blue-500/50 pl-4">
                     <p className="text-blue-100 text-sm font-medium">
                       เบี้ยเลี้ยงสุทธิ
                     </p>
-                    <p className="text-2xl font-bold text-yellow-300">
+                    <p className="text-2xl font-bold text-yellow-300 dark:text-yellow-400">
                       {calcAmount()}{" "}
-                      <span className="text-sm text-yellow-100 font-normal">
+                      <span className="text-sm text-yellow-100 dark:text-yellow-200/80 font-normal">
                         บาท
                       </span>
                     </p>
@@ -355,7 +397,7 @@ export default function WorkOutPage() {
                     <Button
                       variant="outline"
                       onClick={resetForm}
-                      className="w-1/3 h-12 rounded-xl text-slate-600"
+                      className="w-1/3 h-12 rounded-xl text-slate-600 dark:text-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
                     >
                       ยกเลิก
                     </Button>
@@ -364,8 +406,8 @@ export default function WorkOutPage() {
                     onClick={save}
                     className={`h-12 rounded-xl text-base font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 ${
                       editId
-                        ? "w-2/3 bg-orange-500 hover:bg-orange-600 text-white"
-                        : "w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "w-2/3 bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white"
+                        : "w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
                     }`}
                   >
                     <Save className="w-5 h-5" />
@@ -378,14 +420,14 @@ export default function WorkOutPage() {
 
           {/* 🔵 ส่วนประวัติรายการที่บันทึก */}
           <div className="lg:col-span-5 space-y-4">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" /> ประวัติการบันทึก
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" /> ประวัติการบันทึก
               (ล่าสุด)
             </h2>
 
             {rows.length === 0 ? (
-              <div className="bg-white border border-slate-200 border-dashed rounded-2xl p-10 text-center text-slate-500 shadow-sm flex flex-col items-center">
-                <FileText className="w-12 h-12 text-slate-300 mb-3" />
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 border-dashed rounded-2xl p-10 text-center text-slate-500 dark:text-slate-400 shadow-sm flex flex-col items-center transition-colors">
+                <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
                 <p>ยังไม่มีประวัติการบันทึกเวลาทำงาน</p>
               </div>
             ) : (
@@ -393,50 +435,50 @@ export default function WorkOutPage() {
                 {rows.map((r) => (
                   <Card
                     key={r.id}
-                    className="border border-slate-200 shadow-sm hover:border-blue-300 transition-colors bg-white overflow-hidden group"
+                    className="border border-slate-200 dark:border-slate-700 shadow-sm hover:border-blue-300 dark:hover:border-blue-500 transition-colors bg-white dark:bg-slate-800 overflow-hidden group"
                   >
                     <div className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
+                          <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 p-2 rounded-lg">
                             <CalendarDays className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800">
+                            <p className="font-bold text-slate-800 dark:text-white">
                               {format(new Date(r.date), "dd MMMM yyyy", {
                                 locale: th,
                               })}
                             </p>
-                            <p className="text-xs text-slate-500 flex items-center gap-1">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                               <MapPin className="w-3 h-3" /> {r.location}
                             </p>
                           </div>
                         </div>
                         {r.stay_over && (
-                          <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-100">
+                          <Badge className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100">
                             <Moon className="w-3 h-3 mr-1" /> ค้างคืน
                           </Badge>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 mb-3">
                         <div>
-                          <p className="text-[11px] text-slate-500 font-medium">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                             เวลาทำงาน
                           </p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                             {r.start_time} - {r.end_time}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-slate-500 font-medium">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                             รวมเวลา / เบี้ยเลี้ยง
                           </p>
-                          <p className="text-sm font-semibold text-blue-600 flex items-center gap-1">
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                             {r.hours} ชม.{" "}
-                            <span className="text-slate-300">|</span>
-                            <Banknote className="w-3.5 h-3.5 text-emerald-500" />{" "}
-                            <span className="text-emerald-600">
+                            <span className="text-slate-300 dark:text-slate-600">|</span>
+                            <Banknote className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />{" "}
+                            <span className="text-emerald-600 dark:text-emerald-400">
                               {r.amount} ฿
                             </span>
                           </p>
@@ -447,7 +489,7 @@ export default function WorkOutPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-1/2 h-8 text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+                          className="w-1/2 h-8 text-slate-600 dark:text-slate-300 dark:border-slate-600 dark:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 transition-colors"
                           onClick={() => edit(r)}
                         >
                           <Pencil className="w-3.5 h-3.5 mr-1.5" /> แก้ไข
@@ -455,7 +497,7 @@ export default function WorkOutPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="w-1/2 h-8 text-slate-500 bg-slate-100 hover:text-red-600 hover:bg-red-50"
+                          className="w-1/2 h-8 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           onClick={() => remove(r.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-1.5" /> ลบ
@@ -478,6 +520,10 @@ export default function WorkOutPage() {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+                
+                /* Dark Mode Scrollbar */
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
             `,
         }}
       />

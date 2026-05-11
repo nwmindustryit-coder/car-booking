@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Pencil, Trash2, FileText, ArrowLeft, Search, User, ShieldAlert, Save, ClipboardList } from "lucide-react";
+import { Pencil, Trash2, FileText, ArrowLeft, Search, User, ShieldAlert, Save, ClipboardList, Moon, Sun } from "lucide-react";
 
 const RATE_PER_KM = 5;
 
@@ -45,6 +45,9 @@ export default function PrivateMileagePage() {
   const [viewMode, setViewMode] = useState<'user' | 'admin'>('user'); // ✅ เริ่มต้นเป็น user เสมอ
   const [loadingUser, setLoadingUser] = useState(true);
 
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // States: Data
   const [rows, setRows] = useState<MileageRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
@@ -63,6 +66,29 @@ export default function PrivateMileagePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("all");
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+    }
+  };
 
   // ✅ 1. โหลด User & Role
   useEffect(() => {
@@ -231,33 +257,47 @@ export default function PrivateMileagePage() {
 
   if (loadingUser) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50">
+      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <div className="animate-spin h-10 w-10 mb-4 border-4 border-blue-500 border-t-transparent rounded-full" />
-        <p className="text-slate-500 font-medium animate-pulse">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
+        <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
       </main>
     );
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
       <Navbar />
       <main className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 mt-4">
         
         {/* หัวข้อ + ปุ่มจัดการ */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
               บันทึกเลขไมล์รถยนต์ส่วนตัว
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              ระบบคำนวณค่า Mileage อัตรา <span className="font-semibold text-emerald-600">{RATE_PER_KM.toLocaleString()} บาท / 1 กม.</span>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              ระบบคำนวณค่า Mileage อัตรา <span className="font-semibold text-emerald-600 dark:text-emerald-400">{RATE_PER_KM.toLocaleString()} บาท / 1 กม.</span>
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => router.push("/")} className="bg-white">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* 🌙 ปุ่ม Toggle Dark Mode */}
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              {isDarkMode ? (
+                <Sun className="w-4 h-4 mr-2 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+              )}
+              {isDarkMode ? "Light Mode" : "Dark Mode"}
+            </Button>
+
+            <Button variant="outline" onClick={() => router.push("/")} className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700">
               <ArrowLeft className="w-4 h-4 mr-2" /> กลับหน้าหลัก
             </Button>
-            <Button onClick={() => router.push("/private-mile/report")} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+            <Button onClick={() => router.push("/private-mile/report")} className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white shadow-sm">
               <FileText className="w-4 h-4 mr-2" /> ออกรายงาน
             </Button>
           </div>
@@ -265,16 +305,16 @@ export default function PrivateMileagePage() {
 
         {/* ✨ สวิตช์สลับมุมมอง (แสดงเฉพาะ Admin) */}
         {isAdmin && (
-          <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex">
+          <div className="bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 inline-flex transition-colors">
             <button
               onClick={() => setViewMode('user')}
-              className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'user' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+              className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'user' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
               <User className="w-4 h-4" /> มุมมองของคุณ
             </button>
             <button
               onClick={() => setViewMode('admin')}
-              className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'admin' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+              className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'admin' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
               <ShieldAlert className="w-4 h-4" /> มุมมองแอดมิน
             </button>
@@ -282,13 +322,13 @@ export default function PrivateMileagePage() {
         )}
 
         {/* ฟอร์มบันทึกเลขไมล์ */}
-        <Card className="border-slate-200 shadow-sm overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-            <CardTitle className="text-lg text-slate-800 flex items-center gap-2">
+        <Card className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden bg-white dark:bg-slate-800 transition-colors">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 pb-4">
+            <CardTitle className="text-lg text-slate-800 dark:text-white flex items-center gap-2">
               {editingId ? (
-                <><Pencil className="w-5 h-5 text-amber-600" /> แก้ไขข้อมูลเลขไมล์</>
+                <><Pencil className="w-5 h-5 text-amber-600 dark:text-amber-500" /> แก้ไขข้อมูลเลขไมล์</>
               ) : (
-                <><FileText className="w-5 h-5 text-blue-600" /> ฟอร์มบันทึกเลขไมล์</>
+                <><FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" /> ฟอร์มบันทึกเลขไมล์</>
               )}
             </CardTitle>
           </CardHeader>
@@ -296,49 +336,49 @@ export default function PrivateMileagePage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">ชื่อพนักงาน</label>
-                  <Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="เช่น นายธีรภัทร ทัศนาราม" required className="bg-white" />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">ชื่อพนักงาน</label>
+                  <Input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="เช่น นายธีรภัทร ทัศนาราม" required className="bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">วันที่เดินทาง</label>
-                  <DatePicker selected={date} onChange={(d: Date | null) => setDate(d)} dateFormat="dd/MM/yyyy" className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" locale={th} />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">วันที่เดินทาง</label>
+                  <DatePicker selected={date} onChange={(d: Date | null) => setDate(d)} dateFormat="dd/MM/yyyy" className="flex h-10 w-full rounded-md border border-input bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" locale={th} />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700">สถานที่</label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="เช่น เยี่ยมลูกค้า – ปราจีนบุรี" className="bg-white" />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">สถานที่</label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="เช่น เยี่ยมลูกค้า – ปราจีนบุรี" className="bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400" />
               </div>
 
               <div className="grid md:grid-cols-3 gap-5">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">เลขไมล์เริ่มต้น</label>
-                  <Input type="number" value={startMile} onChange={(e) => setStartMile(e.target.value)} min={0} className="bg-white font-mono" />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">เลขไมล์เริ่มต้น</label>
+                  <Input type="number" value={startMile} onChange={(e) => setStartMile(e.target.value)} min={0} className="bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white font-mono" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">เลขไมล์สิ้นสุด</label>
-                  <Input type="number" value={endMile} onChange={(e) => setEndMile(e.target.value)} min={0} className="bg-white font-mono" />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">เลขไมล์สิ้นสุด</label>
+                  <Input type="number" value={endMile} onChange={(e) => setEndMile(e.target.value)} min={0} className="bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white font-mono" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">ระยะทาง (กม.) โดยประมาณ</label>
-                  <div className="h-10 flex items-center justify-end px-4 rounded-md border border-emerald-200 bg-emerald-50 text-sm font-bold text-emerald-700">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">ระยะทาง (กม.) โดยประมาณ</label>
+                  <div className="h-10 flex items-center justify-end px-4 rounded-md border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/20 text-sm font-bold text-emerald-700 dark:text-emerald-400">
                     {startMile && endMile && !Number.isNaN(Number(endMile) - Number(startMile)) ? `${Number(endMile) - Number(startMile)} กม.` : "-"}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700">หมายเหตุ / เหตุผลการเดินทาง</label>
-                <Textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={2} placeholder="เช่น ไปติดตั้งเครื่องจักรที่บริษัทลูกค้า ..." className="bg-white resize-none" />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">หมายเหตุ / เหตุผลการเดินทาง</label>
+                <Textarea value={remark} onChange={(e) => setRemark(e.target.value)} rows={2} placeholder="เช่น ไปติดตั้งเครื่องจักรที่บริษัทลูกค้า ..." className="bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400 resize-none" />
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 {editingId && (
-                  <Button type="button" variant="outline" onClick={resetForm} className="bg-white">
+                  <Button type="button" variant="outline" onClick={resetForm} className="bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700">
                     ยกเลิก
                   </Button>
                 )}
-                <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] shadow-sm flex items-center justify-center gap-2">
+                <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white min-w-[140px] shadow-sm flex items-center justify-center gap-2">
                   <Save className="w-4 h-4" />
                   {saving ? "กำลังบันทึก..." : editingId ? "บันทึกการแก้ไข" : "บันทึกข้อมูล"}
                 </Button>
@@ -348,25 +388,25 @@ export default function PrivateMileagePage() {
         </Card>
 
         {/* ตารางรายการ */}
-        <Card className="border-slate-200 shadow-sm overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <Card className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden bg-white dark:bg-slate-800 transition-colors">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-lg text-slate-800 flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-slate-600" />
+              <CardTitle className="text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 {viewMode === 'admin' ? "รายการเลขไมล์ (พนักงานทั้งหมด)" : "รายการเลขไมล์ของคุณ"}
               </CardTitle>
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto">
               <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <Input
                   placeholder="ค้นหาชื่อ / สถานที่ / เหตุผล"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 bg-white"
+                  className="w-full pl-9 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
                 />
               </div>
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border-emerald-200 px-4 py-1.5 text-sm font-bold whitespace-nowrap">
+              <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 px-4 py-1.5 text-sm font-bold whitespace-nowrap">
                 ยอดรวม: {totalAmount.toLocaleString()} ฿
               </Badge>
             </div>
@@ -375,10 +415,10 @@ export default function PrivateMileagePage() {
           <CardContent className="p-0">
             {/* ✅ ตัวกรองเดือน */}
             {availableMonths.length > 0 && (
-              <div className="flex overflow-x-auto p-4 gap-2 border-b border-slate-100 bg-white scrollbar-hide">
+              <div className="flex overflow-x-auto p-4 gap-2 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 scrollbar-hide">
                 <Button
                   variant={selectedMonthFilter === "all" ? "default" : "outline"}
-                  className={`whitespace-nowrap rounded-full shadow-sm transition-all ${selectedMonthFilter === "all" ? "bg-slate-800 text-white" : "text-slate-600 bg-white"}`}
+                  className={`whitespace-nowrap rounded-full shadow-sm transition-all ${selectedMonthFilter === "all" ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900" : "text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 dark:border-slate-600 dark:hover:bg-slate-600"}`}
                   onClick={() => setSelectedMonthFilter("all")}
                   size="sm"
                 >
@@ -392,7 +432,7 @@ export default function PrivateMileagePage() {
                     <Button
                       key={monthStr}
                       variant={isSelected ? "default" : "outline"}
-                      className={`whitespace-nowrap rounded-full shadow-sm transition-all ${isSelected ? "bg-blue-600 text-white" : "text-slate-600 bg-white"}`}
+                      className={`whitespace-nowrap rounded-full shadow-sm transition-all ${isSelected ? "bg-blue-600 dark:bg-blue-500 text-white" : "text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 dark:border-slate-600 dark:hover:bg-slate-600"}`}
                       onClick={() => setSelectedMonthFilter(monthStr)}
                       size="sm"
                     >
@@ -404,19 +444,19 @@ export default function PrivateMileagePage() {
             )}
 
             {loadingRows ? (
-              <div className="p-12 text-center text-sm text-slate-500 flex flex-col items-center">
+              <div className="p-12 text-center text-sm text-slate-500 dark:text-slate-400 flex flex-col items-center">
                 <div className="animate-spin h-6 w-6 mb-3 border-2 border-blue-500 border-t-transparent rounded-full" />
                 กำลังโหลดข้อมูล...
               </div>
             ) : filteredRows.length === 0 ? (
-              <div className="p-16 text-center text-slate-500 flex flex-col items-center">
-                <FileText className="w-12 h-12 text-slate-200 mb-3"/>
+              <div className="p-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center">
+                <FileText className="w-12 h-12 text-slate-200 dark:text-slate-600 mb-3"/>
                 <p>ไม่พบรายการเลขไมล์</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left whitespace-nowrap">
-                  <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="px-4 py-3 text-center w-12">#</th>
                       {viewMode === 'admin' && <th className="px-4 py-3">ชื่อพนักงาน</th>}
@@ -428,52 +468,52 @@ export default function PrivateMileagePage() {
                       <th className="px-4 py-3 text-center w-24">จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                     {filteredRows.map((r, idx) => {
                       const d = new Date(r.date);
                       const distance = typeof r.distance === "number" ? r.distance : r.end_mile - r.start_mile;
                       const amount = typeof r.amount === "number" ? r.amount : distance * RATE_PER_KM;
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
+                        <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-4 py-3 text-center text-slate-400 dark:text-slate-500">{idx + 1}</td>
                           
                           {viewMode === 'admin' && (
-                            <td className="px-4 py-3 font-semibold text-slate-700">
+                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
                               {r.employee_name || "-"}
                             </td>
                           )}
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                             {format(d, "dd MMM yy", { locale: th })}
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                             <div className="max-w-[200px] whitespace-normal break-words leading-snug">{r.location}</div>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex flex-col items-end">
-                              <span className="font-semibold text-slate-800">{distance}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">({r.start_mile.toLocaleString()} - {r.end_mile.toLocaleString()})</span>
+                              <span className="font-semibold text-slate-800 dark:text-white">{distance}</span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">({r.start_mile.toLocaleString()} - {r.end_mile.toLocaleString()})</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
                             <div className="max-w-[150px] whitespace-normal break-words leading-snug">{r.remark || "-"}</div>
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                          <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                             {amount.toLocaleString()}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {isAdmin || r.user_id === user.id ? (
                               <div className="flex items-center justify-center gap-1">
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50" onClick={() => handleEdit(r)}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30" onClick={() => handleEdit(r)}>
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(r)}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => handleDelete(r)}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             ) : (
-                              <span className="text-xs text-slate-300">-</span>
+                              <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
                             )}
                           </td>
                         </tr>
