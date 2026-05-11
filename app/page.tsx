@@ -22,6 +22,9 @@ import {
   CarIcon,
   ArrowRightLeft,
   ShieldCheck,
+  MapPin,
+  Clock,
+  User,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -139,7 +142,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ
   // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี
   useEffect(() => {
     const loadAlerts = async () => {
@@ -174,7 +176,7 @@ export default function Dashboard() {
           }
         }
 
-        // 🔵 2. เช็กวันหมดอายุ ภาษี / พ.ร.บ. / ประกัน (ดึงค่าแจ้งเตือนล่วงหน้ามาจาก DB)
+        // 🔵 2. เช็กวันหมดอายุ ภาษี / พ.ร.บ. / ประกัน
         const checkExpire = (
           expireDate: string | null,
           docName: string,
@@ -186,7 +188,6 @@ export default function Dashboard() {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
           if (diffDays <= alertDays) {
-            // <-- เปลี่ยนจาก <= 30 เป็นใช้ค่าจาก DB
             result.push({
               id: `${car.id}-${docName}`,
               plate: car.plate,
@@ -202,7 +203,6 @@ export default function Dashboard() {
           }
         };
 
-        // ดึงค่าการแจ้งเตือนจาก DB (ถ้าไม่ได้ตั้งค่าให้ใช้ 30 วันเป็นค่าเริ่มต้น)
         const alertDays = car.alert_before_days ?? 30;
 
         checkExpire(car.tax_expire, "ภาษี", alertDays);
@@ -298,14 +298,12 @@ export default function Dashboard() {
       if (data.user) {
         setUser(data.user);
 
-        // ✨ ดึงสิทธิ์จากตาราง profiles คอลัมน์ role
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", data.user.id)
           .maybeSingle();
 
-        // เช็กแบบครอบคลุมตัวพิมพ์เล็กใหญ่ (admin, Admin, ADMIN)
         if (profile && profile.role && profile.role.toLowerCase() === "admin") {
           setIsAdmin(true);
         } else {
@@ -591,7 +589,6 @@ export default function Dashboard() {
           {alerts.map((a, idx) => (
             <div
               key={a.id || idx}
-              // ✨ เปลี่ยนสีกล่องให้ต่างกัน: เข้าศูนย์สีแดง, เอกสารสีส้ม
               className={`premium-alert ${a.type === "document" ? "bg-gradient-to-br from-amber-500 to-orange-600" : ""}`}
               style={{ animationDelay: `${idx * 0.1}s` }}
             >
@@ -643,54 +640,24 @@ export default function Dashboard() {
 
       <style jsx>{`
         @keyframes slideInDown {
-          from {
-            transform: translateY(-100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
         @keyframes fadeOut {
-          from {
-            opacity: 1;
-            transform: scale(1);
-          }
-          to {
-            opacity: 0;
-            transform: scale(0.95);
-          }
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(0.95); }
         }
         @keyframes pulseGlow {
-          0%,
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.8;
-            transform: scale(1.1);
-          }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.1); }
         }
         @keyframes ringPulse {
-          0%,
-          100% {
-            stroke-dasharray: 0 100;
-            opacity: 0.6;
-          }
-          50% {
-            stroke-dasharray: 50 100;
-            opacity: 1;
-          }
+          0%, 100% { stroke-dasharray: 0 100; opacity: 0.6; }
+          50% { stroke-dasharray: 50 100; opacity: 1; }
         }
         @keyframes shimmer {
-          0% {
-            background-position: -200% center;
-          }
-          100% {
-            background-position: 200% center;
-          }
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
         }
 
         .alert-container {
@@ -825,13 +792,13 @@ export default function Dashboard() {
 
       <Navbar />
       <AnnouncementPopup />
-      <div className="p-6 bg-slate-50 min-h-screen">
-        <main className="p-2 sm:p-6 max-w-6xl mx-auto">
+      <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
+        <main className="max-w-6xl mx-auto">
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
                 <CarIcon className="w-5 h-5 text-blue-600" />
-                สถานะรถ ณ ปัจจุบัน (Real-time)
+                สถานะรถ (Real-time)
               </h2>
               {/* ✨ แสดงป้ายแอดมิน เพื่อความมั่นใจว่าระบบเห็นสิทธิ์แล้ว */}
               {isAdmin && (
@@ -886,12 +853,12 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
             <h1 className="text-xl sm:text-2xl font-bold text-blue-700">
               รายการจองรถ
             </h1>
 
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -903,7 +870,7 @@ export default function Dashboard() {
               </div>
               <Button
                 onClick={() => (location.href = "/booking")}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 + จองรถ
               </Button>
@@ -939,7 +906,7 @@ export default function Dashboard() {
                     className={
                       isSelected
                         ? "bg-blue-700 text-white"
-                        : "text-gray-600 bg-white"
+                        : "text-gray-600 bg-white whitespace-nowrap"
                     }
                     onClick={() => setSelectedMonthFilter(monthStr)}
                     size="sm"
@@ -998,7 +965,130 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    {/* ============================================================== */}
+                    {/* 📱 1. สำหรับหน้าจอมือถือ (Mobile View - Card Layout) */}
+                    {/* ============================================================== */}
+                    <div className="block lg:hidden bg-slate-50/50 p-2 space-y-3">
+                      {group.map((b: any) => (
+                        <div key={b.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                          {/* แถบสถานะด้านบนของการ์ด */}
+                          <div className={`absolute top-0 left-0 w-1 h-full ${b.miles_status === "recorded" ? "bg-emerald-500" : "bg-amber-500"}`}></div>
+                          
+                          <div className="pl-2">
+                            {/* บรรทัดแรก: ชื่อคนขับ และ ทะเบียน */}
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2 text-slate-800 font-bold text-base">
+                                <User className="w-4 h-4 text-slate-400" />
+                                {b.driver_name}
+                              </div>
+                              <Badge variant="outline" className="bg-slate-50 border-slate-200 text-slate-700 shadow-sm">
+                                {b.cars?.plate}
+                              </Badge>
+                            </div>
+
+                            {/* บรรทัดสอง: เวลา และ สถานที่ */}
+                            <div className="space-y-1 mb-3">
+                              <div className="flex items-start gap-2 text-sm text-slate-600">
+                                <Clock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                <span>{mergeTimeSlots(b.time_slot)}</span>
+                              </div>
+                              <div className="flex items-start gap-2 text-sm text-slate-700 font-medium">
+                                <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                <span className="line-clamp-2">{b.destination}</span>
+                              </div>
+                              {b.reason && (
+                                <div className="pl-6 text-xs text-slate-400">
+                                  เหตุผล: {b.reason}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* บรรทัดล่างสุด: สถานะไมล์ และ ปุ่มต่างๆ */}
+                            <div className="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-slate-100 gap-3">
+                              
+                              <div className="w-full sm:w-auto flex justify-center sm:justify-start">
+                                {b.miles_status === "recorded" ? (
+                                  <span className="text-emerald-600 font-semibold text-xs bg-emerald-50 px-2.5 py-1.5 rounded-full flex items-center gap-1">
+                                    ✅ ลงไมล์แล้ว ({b.total_mile} กม.)
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 font-semibold text-xs bg-amber-50 px-2.5 py-1.5 rounded-full flex items-center gap-1">
+                                    ⚠️ รอลงเลขไมล์
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                                <Button
+                                  size="sm" variant="outline"
+                                  className="h-9 px-3 rounded-lg border-slate-200 bg-white text-slate-600 shadow-sm"
+                                  onClick={async () => {
+                                    const { data: milesData } = await supabase.from("miles").select("start_mile, end_mile, total_mile").eq("booking_id", b.id).limit(1).maybeSingle();
+                                    setShowDetail({ ...b, miles: milesData || null });
+                                  }}
+                                >
+                                  <EyeIcon className="w-4 h-4" />
+                                </Button>
+                                
+                                {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในมือถือ ✨ */}
+                                <Button
+                                  size="sm"
+                                  disabled={b.miles_status === "recorded"}
+                                  onClick={() => setSelectedBooking(b)}
+                                  className={`h-9 px-3 rounded-lg shadow-sm ${
+                                    b.miles_status === "recorded" 
+                                      ? "bg-slate-100 text-slate-400 opacity-80" 
+                                      : "bg-blue-600 text-white hover:bg-blue-700"
+                                  }`}
+                                >
+                                  <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
+                                </Button>
+
+                                {canManageDay && (b.user_id === user.id || isAdmin) && (
+                                  <>
+                                    <Button
+                                      size="sm" variant="ghost"
+                                      className="h-9 px-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg ml-1"
+                                      onClick={() => {
+                                        setEditForm({ driver_name: b.driver_name, destination: b.destination, reason: b.reason, date: new Date(b.date) });
+                                        setSelectedEditTimes(b.time_slot.split(",").map((s: string) => s.trim()));
+                                        setEditBooking(b);
+                                      }}
+                                    >
+                                      <SquarePen className="w-4 h-4" />
+                                    </Button>
+                                    
+                                    {isAdmin && (
+                                      <Button
+                                        size="sm" variant="ghost"
+                                        className="h-9 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                                        onClick={() => setSwapBooking(b)}
+                                      >
+                                        <ArrowRightLeft className="w-4 h-4" />
+                                      </Button>
+                                    )}
+
+                                    <Button
+                                      size="sm" variant="ghost"
+                                      className="h-9 px-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"
+                                      onClick={() => handleDeleteBooking(b)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* ============================================================== */}
+                    {/* 💻 2. สำหรับหน้าจอคอมพิวเตอร์/แท็บเล็ต (Desktop View - Table Layout) */}
+                    {/* ============================================================== */}
+                    <div className="hidden lg:block overflow-x-auto">
                       <table className="w-full text-xs sm:text-sm min-w-[700px]">
                         <thead className="bg-blue-100 text-blue-800">
                           <tr>
@@ -1078,12 +1168,10 @@ export default function Dashboard() {
                                     <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500" />{" "}
                                     ดู
                                   </Button>
+                                  {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในคอมพิวเตอร์ ✨ */}
                                   <Button
                                     size="sm"
-                                    disabled={
-                                      b.miles_status === "recorded" ||
-                                      (!isAdmin && b.user_id !== user.id)
-                                    }
+                                    disabled={b.miles_status === "recorded"}
                                     onClick={() => setSelectedBooking(b)}
                                     className={`h-8 px-3 rounded-lg flex items-center transition-all duration-200 ${
                                       b.miles_status === "recorded"
@@ -1224,35 +1312,53 @@ export default function Dashboard() {
             open={!!selectedBooking}
             onOpenChange={() => setSelectedBooking(null)}
           >
-            <DialogContent className="w-[95vw] sm:max-w-md">
+            <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
               <DialogHeader>
-                <DialogTitle>บันทึกเลขไมล์</DialogTitle>
+                <DialogTitle className="text-xl text-blue-700 flex items-center gap-2">
+                  <GaugeIcon className="w-5 h-5"/>
+                  บันทึกเลขไมล์
+                </DialogTitle>
               </DialogHeader>
               {selectedBooking && (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    รถทะเบียน <b>{selectedBooking.cars?.plate}</b> <br />
-                    ผู้ขับ: <b>{selectedBooking.driver_name}</b>
-                  </p>
-                  <Input
-                    type="number"
-                    placeholder="เลขไมล์เริ่มต้น"
-                    value={startMile}
-                    onChange={(e) => setStartMile(e.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="เลขไมล์สิ้นสุด"
-                    value={endMile}
-                    onChange={(e) => setEndMile(e.target.value)}
-                  />
+                <div className="space-y-4 pt-2">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
+                    <p>รถทะเบียน: <b className="text-blue-600">{selectedBooking.cars?.plate}</b></p>
+                    <p>ผู้ขับ: <b className="text-slate-700">{selectedBooking.driver_name}</b></p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">เลขไมล์เริ่มต้น</label>
+                      <Input
+                        type="number"
+                        className="h-12 text-lg font-medium"
+                        placeholder="กรอกเลขไมล์ตอนเริ่ม..."
+                        value={startMile}
+                        onChange={(e) => setStartMile(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">เลขไมล์สิ้นสุด</label>
+                      <Input
+                        type="number"
+                        className="h-12 text-lg font-medium"
+                        placeholder="กรอกเลขไมล์ตอนจบ..."
+                        value={endMile}
+                        onChange={(e) => setEndMile(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
                   {usedMile !== null && (
-                    <p className="text-center text-sm text-blue-700">
-                      รวมระยะทางที่ใช้: <b>{usedMile}</b> กม.
-                    </p>
+                    <div className={`p-3 rounded-xl border text-center ${usedMile < 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                      <p className={`text-sm ${usedMile < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                        ระยะทางที่ขับขี่รวม: <span className="text-xl font-bold">{usedMile}</span> กม.
+                      </p>
+                    </div>
                   )}
-                  <Button className="w-full" onClick={handleSaveMiles}>
-                    💾 บันทึกเลขไมล์
+
+                  <Button className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 rounded-xl" onClick={handleSaveMiles}>
+                    💾 ยืนยันการบันทึก
                   </Button>
                 </div>
               )}
