@@ -25,6 +25,8 @@ import {
   MapPin,
   Clock,
   User,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -76,6 +78,9 @@ export default function Dashboard() {
   // 👑 State โหมดผู้ดูแลระบบ (Admin) จากฐานข้อมูล
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // State สำหรับระบบสลับรถ (Swap Car)
   const [swapBooking, setSwapBooking] = useState<any | null>(null);
   const [swapOptions, setSwapOptions] = useState<any[]>([]);
@@ -90,6 +95,29 @@ export default function Dashboard() {
   });
 
   const router = useRouter();
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+    }
+  };
 
   // 1. ระบบดึงสถานะรถ Real-time
   const fetchCarStatus = async () => {
@@ -553,7 +581,7 @@ export default function Dashboard() {
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen text-blue-600">
+      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <svg
           className="animate-spin h-8 w-8 mb-3 text-blue-500"
           xmlns="http://www.w3.org/2000/svg"
@@ -574,7 +602,7 @@ export default function Dashboard() {
             d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
           />
         </svg>
-        <p className="text-gray-500 animate-pulse">
+        <p className="text-gray-500 dark:text-gray-400 animate-pulse">
           กำลังตรวจสอบสิทธิ์ผู้ใช้...
         </p>
       </main>
@@ -792,17 +820,17 @@ export default function Dashboard() {
 
       <Navbar />
       <AnnouncementPopup />
-      <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
+      <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-300">
         <main className="max-w-6xl mx-auto">
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
-                <CarIcon className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <CarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 สถานะรถ (Real-time)
               </h2>
               {/* ✨ แสดงป้ายแอดมิน เพื่อความมั่นใจว่าระบบเห็นสิทธิ์แล้ว */}
               {isAdmin && (
-                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
+                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700">
                   <ShieldCheck className="w-4 h-4 mr-1" />
                   สิทธิ์ผู้ดูแลระบบ (Admin)
                 </Badge>
@@ -814,23 +842,23 @@ export default function Dashboard() {
                 {carStatuses.map((car) => (
                   <div
                     key={car.id}
-                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 hover:shadow-md"
+                    className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 dark:hover:border-blue-500 hover:shadow-md"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                        <CarIcon className="w-5 h-5 text-slate-600" />
+                      <div className="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
+                        <CarIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 text-sm sm:text-base">
+                        <p className="font-bold text-slate-800 dark:text-white text-sm sm:text-base">
                           {car.plate}
                         </p>
-                        <p className="text-[11px] sm:text-xs text-slate-500">
+                        <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                           {car.brand || "รถส่วนกลาง"}
                         </p>
                       </div>
                     </div>
                     {car.isBusy ? (
-                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800 hover:bg-amber-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -838,7 +866,7 @@ export default function Dashboard() {
                         ไม่ว่าง ({car.currentDriver})
                       </Badge>
                     ) : (
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 hover:bg-emerald-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                         ว่าง
                       </Badge>
@@ -847,30 +875,44 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-400 p-4 border border-dashed rounded-xl text-center">
+              <div className="text-sm text-slate-400 dark:text-slate-500 p-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-center">
                 กำลังตรวจสอบสถานะรถ...
               </div>
             )}
           </div>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold text-blue-700">
+            <h1 className="text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-400">
               รายการจองรถ
             </h1>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              {/* 🌙 ปุ่ม Toggle Dark Mode */}
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                className="w-full sm:w-auto bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700 transition-colors"
+              >
+                {isDarkMode ? (
+                  <Sun className="w-4 h-4 mr-2 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+                )}
+                {isDarkMode ? "Light Mode" : "Dark Mode"}
+              </Button>
+
               <div className="relative w-full md:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <Input
-                  placeholder="ค้นหาชื่อผู้จอง / ผู้ขับ / ทะเบียนรถ"
+                  placeholder="ค้นหาชื่อ / ทะเบียนรถ"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 bg-white"
+                  className="w-full pl-9 bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder-slate-400 transition-colors"
                 />
               </div>
               <Button
                 onClick={() => (location.href = "/booking")}
-                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full sm:w-auto"
               >
                 + จองรถ
               </Button>
@@ -883,8 +925,8 @@ export default function Dashboard() {
                 variant={selectedMonthFilter === "all" ? "default" : "outline"}
                 className={
                   selectedMonthFilter === "all"
-                    ? "bg-blue-700 text-white"
-                    : "text-gray-600 bg-white"
+                    ? "bg-blue-700 text-white dark:bg-blue-600"
+                    : "text-gray-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 transition-colors"
                 }
                 onClick={() => setSelectedMonthFilter("all")}
                 size="sm"
@@ -905,8 +947,8 @@ export default function Dashboard() {
                     variant={isSelected ? "default" : "outline"}
                     className={
                       isSelected
-                        ? "bg-blue-700 text-white"
-                        : "text-gray-600 bg-white whitespace-nowrap"
+                        ? "bg-blue-700 text-white dark:bg-blue-600"
+                        : "text-gray-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 whitespace-nowrap transition-colors"
                     }
                     onClick={() => setSelectedMonthFilter(monthStr)}
                     size="sm"
@@ -918,7 +960,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow overflow-hidden dark:border dark:border-slate-700 transition-colors">
             {Object.entries(
               filteredBookings
                 .filter((booking) => {
@@ -942,25 +984,26 @@ export default function Dashboard() {
                 const d = new Date(date);
                 const isEvenMonth = d.getMonth() % 2 === 0;
 
-                // ✨ ตรวจสอบว่ามีสิทธิ์จัดการของวันนี้ไหม (แอดมินดูได้หมด หรือมีคิวของตัวเอง)
                 const canManageDay =
                   isAdmin || group.some((b) => b.user_id === user.id);
+                
+                // 🌙 ✨ แก้ไขจุดนี้: ปรับสีแถบวันที่ให้สว่างขึ้นใน Dark Mode เพื่อให้ Contrast ชัดเจน ตัดกับพื้นหลัง slate-800
                 const bgColor = isToday(d)
-                  ? "bg-green-600"
+                  ? "bg-green-600 dark:bg-emerald-600" // สีเขียวสว่างสำหรับวันนี้
                   : isEvenMonth
-                    ? "bg-gray-700"
-                    : "bg-gray-600";
+                    ? "bg-gray-700 dark:bg-slate-600"  // ปรับให้สว่างขึ้นเป็น slate-600
+                    : "bg-gray-600 dark:bg-slate-500"; // ปรับให้สว่างขึ้นเป็น slate-500
 
                 return (
-                  <div key={date} className="border-b last:border-none">
+                  <div key={date} className="border-b dark:border-slate-700 last:border-none">
                     <div
-                      className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor}`}
+                      className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor} transition-colors`}
                     >
                       <div>
                         📅 {format(d, "dd MMMM yyyy", { locale: th })}{" "}
                         {isToday(d) && "(วันนี้)"}
                       </div>
-                      <div className="text-sm text-gray-200">
+                      <div className="text-sm text-gray-200 dark:text-slate-100">
                         ({group.length.toLocaleString("th-TH")} รายการ)
                       </div>
                     </div>
@@ -968,51 +1011,47 @@ export default function Dashboard() {
                     {/* ============================================================== */}
                     {/* 📱 1. สำหรับหน้าจอมือถือ (Mobile View - Card Layout) */}
                     {/* ============================================================== */}
-                    <div className="block lg:hidden bg-slate-50/50 p-2 space-y-3">
+                    <div className="block lg:hidden bg-slate-50/50 dark:bg-slate-900/50 p-2 space-y-3 transition-colors">
                       {group.map((b: any) => (
-                        <div key={b.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                          {/* แถบสถานะด้านบนของการ์ด */}
+                        <div key={b.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
                           <div className={`absolute top-0 left-0 w-1 h-full ${b.miles_status === "recorded" ? "bg-emerald-500" : "bg-amber-500"}`}></div>
                           
                           <div className="pl-2">
-                            {/* บรรทัดแรก: ชื่อคนขับ และ ทะเบียน */}
                             <div className="flex justify-between items-start mb-2">
-                              <div className="flex items-center gap-2 text-slate-800 font-bold text-base">
-                                <User className="w-4 h-4 text-slate-400" />
+                              <div className="flex items-center gap-2 text-slate-800 dark:text-white font-bold text-base">
+                                <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                                 {b.driver_name}
                               </div>
-                              <Badge variant="outline" className="bg-slate-50 border-slate-200 text-slate-700 shadow-sm">
+                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 shadow-sm">
                                 {b.cars?.plate}
                               </Badge>
                             </div>
 
-                            {/* บรรทัดสอง: เวลา และ สถานที่ */}
                             <div className="space-y-1 mb-3">
-                              <div className="flex items-start gap-2 text-sm text-slate-600">
-                                <Clock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                              <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
                                 <span>{mergeTimeSlots(b.time_slot)}</span>
                               </div>
-                              <div className="flex items-start gap-2 text-sm text-slate-700 font-medium">
+                              <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200 font-medium">
                                 <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                                 <span className="line-clamp-2">{b.destination}</span>
                               </div>
                               {b.reason && (
-                                <div className="pl-6 text-xs text-slate-400">
+                                <div className="pl-6 text-xs text-slate-400 dark:text-slate-500">
                                   เหตุผล: {b.reason}
                                 </div>
                               )}
                             </div>
 
-                            {/* บรรทัดล่างสุด: สถานะไมล์ และ ปุ่มต่างๆ */}
-                            <div className="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-slate-100 gap-3">
+                            <div className="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-700 gap-3">
                               
                               <div className="w-full sm:w-auto flex justify-center sm:justify-start">
                                 {b.miles_status === "recorded" ? (
-                                  <span className="text-emerald-600 font-semibold text-xs bg-emerald-50 px-2.5 py-1.5 rounded-full flex items-center gap-1">
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-emerald-800/50">
                                     ✅ ลงไมล์แล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
-                                  <span className="text-amber-600 font-semibold text-xs bg-amber-50 px-2.5 py-1.5 rounded-full flex items-center gap-1">
+                                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-amber-800/50">
                                     ⚠️ รอลงเลขไมล์
                                   </span>
                                 )}
@@ -1021,7 +1060,7 @@ export default function Dashboard() {
                               <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
                                 <Button
                                   size="sm" variant="outline"
-                                  className="h-9 px-3 rounded-lg border-slate-200 bg-white text-slate-600 shadow-sm"
+                                  className="h-9 px-3 rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm"
                                   onClick={async () => {
                                     const { data: milesData } = await supabase.from("miles").select("start_mile, end_mile, total_mile").eq("booking_id", b.id).limit(1).maybeSingle();
                                     setShowDetail({ ...b, miles: milesData || null });
@@ -1037,8 +1076,8 @@ export default function Dashboard() {
                                   onClick={() => setSelectedBooking(b)}
                                   className={`h-9 px-3 rounded-lg shadow-sm ${
                                     b.miles_status === "recorded" 
-                                      ? "bg-slate-100 text-slate-400 opacity-80" 
-                                      : "bg-blue-600 text-white hover:bg-blue-700"
+                                      ? "bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 opacity-80" 
+                                      : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                                   }`}
                                 >
                                   <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
@@ -1048,7 +1087,7 @@ export default function Dashboard() {
                                   <>
                                     <Button
                                       size="sm" variant="ghost"
-                                      className="h-9 px-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg ml-1"
+                                      className="h-9 px-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg ml-1"
                                       onClick={() => {
                                         setEditForm({ driver_name: b.driver_name, destination: b.destination, reason: b.reason, date: new Date(b.date) });
                                         setSelectedEditTimes(b.time_slot.split(",").map((s: string) => s.trim()));
@@ -1061,7 +1100,7 @@ export default function Dashboard() {
                                     {isAdmin && (
                                       <Button
                                         size="sm" variant="ghost"
-                                        className="h-9 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                                        className="h-9 px-2 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg"
                                         onClick={() => setSwapBooking(b)}
                                       >
                                         <ArrowRightLeft className="w-4 h-4" />
@@ -1070,7 +1109,7 @@ export default function Dashboard() {
 
                                     <Button
                                       size="sm" variant="ghost"
-                                      className="h-9 px-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"
+                                      className="h-9 px-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg"
                                       onClick={() => handleDeleteBooking(b)}
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -1079,7 +1118,6 @@ export default function Dashboard() {
                                 )}
                               </div>
                             </div>
-
                           </div>
                         </div>
                       ))}
@@ -1090,7 +1128,7 @@ export default function Dashboard() {
                     {/* ============================================================== */}
                     <div className="hidden lg:block overflow-x-auto">
                       <table className="w-full text-xs sm:text-sm min-w-[700px]">
-                        <thead className="bg-blue-100 text-blue-800">
+                        <thead className="bg-blue-100 dark:bg-slate-700 text-blue-800 dark:text-blue-200 border-b dark:border-slate-600 transition-colors">
                           <tr>
                             <th className="p-2 sm:p-3">ชื่อผู้ขับ</th>
                             <th className="p-2 sm:p-3">ทะเบียนรถ</th>
@@ -1107,39 +1145,39 @@ export default function Dashboard() {
                             )}
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="dark:bg-slate-800">
                           {group.map((b: any) => (
                             <tr
                               key={b.id}
-                              className="border-b hover:bg-blue-50 transition-colors"
+                              className="border-b dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors"
                             >
-                              <td className="p-2 sm:p-3 text-center font-medium">
+                              <td className="p-2 sm:p-3 text-center font-medium dark:text-slate-200">
                                 {b.driver_name}
                               </td>
                               <td className="p-2 sm:p-3 text-center">
-                                <Badge variant="outline" className="bg-white">
+                                <Badge variant="outline" className="bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600">
                                   {b.cars?.plate}
                                 </Badge>
                               </td>
-                              <td className="p-2 sm:p-3 text-center">
+                              <td className="p-2 sm:p-3 text-center dark:text-slate-300">
                                 {b.date}
                               </td>
-                              <td className="p-2 sm:p-3 text-center text-slate-600">
+                              <td className="p-2 sm:p-3 text-center text-slate-600 dark:text-slate-400">
                                 {mergeTimeSlots(b.time_slot)}
                               </td>
-                              <td className="p-2 sm:p-3 text-slate-700">
+                              <td className="p-2 sm:p-3 text-slate-700 dark:text-slate-300">
                                 {b.destination}
                               </td>
-                              <td className="p-2 sm:p-3 text-slate-500 text-xs">
+                              <td className="p-2 sm:p-3 text-slate-500 dark:text-slate-400 text-xs">
                                 {b.reason}
                               </td>
                               <td className="p-2 sm:p-3 text-center">
                                 {b.miles_status === "recorded" ? (
-                                  <span className="text-emerald-600 font-semibold text-xs bg-emerald-50 px-2 py-1 rounded-full">
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 border dark:border-emerald-800/50 px-2 py-1 rounded-full inline-block">
                                     ✅ บันทึกแล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
-                                  <span className="text-amber-600 font-semibold text-xs bg-amber-50 px-2 py-1 rounded-full">
+                                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 border dark:border-amber-800/50 px-2 py-1 rounded-full inline-block">
                                     ⚠️ รอลงไมล์
                                   </span>
                                 )}
@@ -1163,9 +1201,9 @@ export default function Dashboard() {
                                         miles: milesData || null,
                                       });
                                     }}
-                                    className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 bg-white hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm flex items-center"
+                                    className="h-8 px-3 rounded-lg border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 transition-all duration-200 shadow-sm flex items-center"
                                   >
-                                    <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500" />{" "}
+                                    <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500 dark:text-blue-400" />{" "}
                                     ดู
                                   </Button>
                                   {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในคอมพิวเตอร์ ✨ */}
@@ -1175,12 +1213,12 @@ export default function Dashboard() {
                                     onClick={() => setSelectedBooking(b)}
                                     className={`h-8 px-3 rounded-lg flex items-center transition-all duration-200 ${
                                       b.miles_status === "recorded"
-                                        ? "bg-slate-100 text-slate-400 border border-slate-200 shadow-none opacity-80 cursor-not-allowed hover:bg-slate-100"
-                                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 border-none"
+                                        ? "bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 shadow-none opacity-80 cursor-not-allowed"
+                                        : "bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 border-none"
                                     }`}
                                   >
                                     <GaugeIcon
-                                      className={`w-4 h-4 mr-1.5 ${b.miles_status === "recorded" ? "text-slate-400" : "text-blue-100"}`}
+                                      className={`w-4 h-4 mr-1.5 ${b.miles_status === "recorded" ? "text-slate-400 dark:text-slate-500" : "text-blue-100"}`}
                                     />
                                     ไมล์
                                   </Button>
@@ -1210,19 +1248,18 @@ export default function Dashboard() {
                                           );
                                           setEditBooking(b);
                                         }}
-                                        className="text-amber-600 hover:bg-amber-50 h-8 px-2"
+                                        className="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 h-8 px-2"
                                       >
                                         <SquarePen className="w-4 h-4" />
                                       </Button>
 
-                                      {/* ✨ ปุ่มสลับรถ ซ่อนไว้เฉพาะแอดมินเท่านั้น */}
                                       {isAdmin && (
                                         <Button
                                           size="sm"
                                           variant="ghost"
                                           title="สลับรถยนต์ / สลับคิว"
                                           onClick={() => setSwapBooking(b)}
-                                          className="text-indigo-600 hover:bg-indigo-50 h-8 px-2"
+                                          className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 h-8 px-2"
                                         >
                                           <ArrowRightLeft className="w-4 h-4" />
                                         </Button>
@@ -1233,7 +1270,7 @@ export default function Dashboard() {
                                         variant="ghost"
                                         title="ลบรายการ"
                                         onClick={() => handleDeleteBooking(b)}
-                                        className="text-red-600 hover:bg-red-50 h-8 px-2"
+                                        className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 h-8 px-2"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
@@ -1253,9 +1290,9 @@ export default function Dashboard() {
 
           {/* 🌟 Modal 1: Dialog แสดงรายละเอียด */}
           <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-            <DialogContent className="w-[95vw] sm:max-w-md">
+            <DialogContent className="w-[95vw] sm:max-w-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
               <DialogHeader>
-                <DialogTitle>รายละเอียดการจอง</DialogTitle>
+                <DialogTitle className="dark:text-white">รายละเอียดการจอง</DialogTitle>
               </DialogHeader>
               {showDetail && (
                 <div className="space-y-2 text-sm">
@@ -1282,14 +1319,14 @@ export default function Dashboard() {
                   </p>
 
                   {showDetail.miles ? (
-                    <div className="pt-2 border-t mt-2">
+                    <div className="pt-2 border-t dark:border-slate-700 mt-2">
                       <p>
                         <b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}
                       </p>
                       <p>
                         <b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}
                       </p>
-                      <p className="text-blue-700 font-semibold">
+                      <p className="text-blue-700 dark:text-blue-400 font-semibold">
                         🚗 ใช้ไปทั้งหมด{" "}
                         {showDetail.miles.total_mile ??
                           showDetail.miles.end_mile -
@@ -1298,7 +1335,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                   ) : (
-                    <p className="italic text-gray-400 pt-2 border-t mt-2">
+                    <p className="italic text-gray-400 dark:text-slate-500 pt-2 border-t dark:border-slate-700 mt-2">
                       ยังไม่ได้บันทึกเลขไมล์
                     </p>
                   )}
@@ -1312,36 +1349,36 @@ export default function Dashboard() {
             open={!!selectedBooking}
             onOpenChange={() => setSelectedBooking(null)}
           >
-            <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
+            <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl dark:bg-slate-800 dark:border-slate-700">
               <DialogHeader>
-                <DialogTitle className="text-xl text-blue-700 flex items-center gap-2">
+                <DialogTitle className="text-xl text-blue-700 dark:text-blue-400 flex items-center gap-2">
                   <GaugeIcon className="w-5 h-5"/>
                   บันทึกเลขไมล์
                 </DialogTitle>
               </DialogHeader>
               {selectedBooking && (
                 <div className="space-y-4 pt-2">
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
-                    <p>รถทะเบียน: <b className="text-blue-600">{selectedBooking.cars?.plate}</b></p>
-                    <p>ผู้ขับ: <b className="text-slate-700">{selectedBooking.driver_name}</b></p>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm">
+                    <p className="dark:text-slate-300">รถทะเบียน: <b className="text-blue-600 dark:text-blue-400">{selectedBooking.cars?.plate}</b></p>
+                    <p className="dark:text-slate-300">ผู้ขับ: <b className="text-slate-700 dark:text-slate-200">{selectedBooking.driver_name}</b></p>
                   </div>
                   
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-500 mb-1 block">เลขไมล์เริ่มต้น</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">เลขไมล์เริ่มต้น</label>
                       <Input
                         type="number"
-                        className="h-12 text-lg font-medium"
+                        className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
                         placeholder="กรอกเลขไมล์ตอนเริ่ม..."
                         value={startMile}
                         onChange={(e) => setStartMile(e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 mb-1 block">เลขไมล์สิ้นสุด</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">เลขไมล์สิ้นสุด</label>
                       <Input
                         type="number"
-                        className="h-12 text-lg font-medium"
+                        className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
                         placeholder="กรอกเลขไมล์ตอนจบ..."
                         value={endMile}
                         onChange={(e) => setEndMile(e.target.value)}
@@ -1350,14 +1387,14 @@ export default function Dashboard() {
                   </div>
 
                   {usedMile !== null && (
-                    <div className={`p-3 rounded-xl border text-center ${usedMile < 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                      <p className={`text-sm ${usedMile < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                    <div className={`p-3 rounded-xl border text-center ${usedMile < 0 ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'}`}>
+                      <p className={`text-sm ${usedMile < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                         ระยะทางที่ขับขี่รวม: <span className="text-xl font-bold">{usedMile}</span> กม.
                       </p>
                     </div>
                   )}
 
-                  <Button className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 rounded-xl" onClick={handleSaveMiles}>
+                  <Button className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white" onClick={handleSaveMiles}>
                     💾 ยืนยันการบันทึก
                   </Button>
                 </div>
@@ -1370,9 +1407,9 @@ export default function Dashboard() {
             open={!!editBooking}
             onOpenChange={() => setEditBooking(null)}
           >
-            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="dark:text-white">
                   แก้ไขการจอง{" "}
                   {isAdmin && (
                     <Badge className="ml-2 bg-indigo-600">Admin Mode</Badge>
@@ -1414,7 +1451,6 @@ export default function Dashboard() {
                         "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
                       );
 
-                    // 🔒 Security Check: ตอนอัปเดต ถ้าไม่ใช่แอดมิน ให้แก้ได้แค่ของตัวเอง
                     let updateQuery = supabase
                       .from("bookings")
                       .update({
@@ -1489,6 +1525,7 @@ export default function Dashboard() {
                     ชื่อผู้ขับ
                   </label>
                   <Input
+                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                     value={editForm.driver_name}
                     onChange={(e) =>
                       setEditForm({ ...editForm, driver_name: e.target.value })
@@ -1497,6 +1534,7 @@ export default function Dashboard() {
 
                   <label className="block text-sm font-medium">สถานที่</label>
                   <Input
+                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                     value={editForm.destination}
                     onChange={(e) =>
                       setEditForm({ ...editForm, destination: e.target.value })
@@ -1505,18 +1543,20 @@ export default function Dashboard() {
 
                   <label className="block text-sm font-medium">เหตุผล</label>
                   <Input
+                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                     value={editForm.reason}
                     onChange={(e) =>
                       setEditForm({ ...editForm, reason: e.target.value })
                     }
                   />
 
-                  <div className="border-t pt-3">
+                  <div className="border-t dark:border-slate-700 pt-3">
                     <label className="block text-sm font-medium">
                       เลขไมล์เริ่มต้น
                     </label>
                     <Input
                       type="number"
+                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                       value={editStartMile}
                       onChange={(e) => setEditStartMile(e.target.value)}
                     />
@@ -1525,6 +1565,7 @@ export default function Dashboard() {
                     </label>
                     <Input
                       type="number"
+                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                       value={editEndMile}
                       onChange={(e) => setEditEndMile(e.target.value)}
                     />
@@ -1537,7 +1578,7 @@ export default function Dashboard() {
                       d && setEditForm({ ...editForm, date: d })
                     }
                     dateFormat="dd/MM/yyyy"
-                    className="border rounded-md p-2 w-full"
+                    className="border rounded-md p-2 w-full dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                   />
 
                   <label className="block text-sm font-medium">
@@ -1570,7 +1611,9 @@ export default function Dashboard() {
                           disabled={
                             isBooked && bookedBy !== editForm.driver_name
                           }
-                          className="flex items-center justify-center gap-1"
+                          className={`flex items-center justify-center gap-1 ${
+                            isSelected ? "" : "dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600"
+                          }`}
                         >
                           {slot}
                           {isBooked ? (
@@ -1586,7 +1629,7 @@ export default function Dashboard() {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-blue-600 text-white"
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
                   >
                     💾 บันทึกการแก้ไข
                   </Button>
@@ -1600,9 +1643,9 @@ export default function Dashboard() {
             open={!!swapBooking}
             onOpenChange={() => setSwapBooking(null)}
           >
-            <DialogContent className="w-[95vw] sm:max-w-md">
+            <DialogContent className="w-[95vw] sm:max-w-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-indigo-700">
+                <DialogTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
                   <ArrowRightLeft className="w-5 h-5" /> สลับรถ / สลับคิว{" "}
                   {isAdmin && (
                     <Badge className="bg-indigo-600 text-xs ml-2">
@@ -1614,24 +1657,24 @@ export default function Dashboard() {
 
               {swapBooking && (
                 <div className="space-y-4 pt-4">
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm space-y-1">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm space-y-1">
                     <p>
-                      <span className="text-slate-500">ผู้ขับ:</span>{" "}
-                      <b>{swapBooking.driver_name}</b>
+                      <span className="text-slate-500 dark:text-slate-400">ผู้ขับ:</span>{" "}
+                      <b className="dark:text-white">{swapBooking.driver_name}</b>
                     </p>
                     <p>
-                      <span className="text-slate-500">วันที่:</span>{" "}
-                      <b>{swapBooking.date}</b>
+                      <span className="text-slate-500 dark:text-slate-400">วันที่:</span>{" "}
+                      <b className="dark:text-white">{swapBooking.date}</b>
                     </p>
                     <p>
-                      <span className="text-slate-500">ช่วงเวลา:</span>{" "}
-                      <b>{mergeTimeSlots(swapBooking.time_slot)}</b>
+                      <span className="text-slate-500 dark:text-slate-400">ช่วงเวลา:</span>{" "}
+                      <b className="dark:text-white">{mergeTimeSlots(swapBooking.time_slot)}</b>
                     </p>
                     <p>
-                      <span className="text-slate-500">รถคันเดิม:</span>{" "}
+                      <span className="text-slate-500 dark:text-slate-400">รถคันเดิม:</span>{" "}
                       <Badge
                         variant="outline"
-                        className="ml-1 bg-white text-slate-700"
+                        className="ml-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 dark:border-slate-600"
                       >
                         {swapBooking.cars?.plate}
                       </Badge>
@@ -1639,13 +1682,13 @@ export default function Dashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       เลือกรถคันใหม่ที่ต้องการสลับ
                     </label>
                     {swapOptions.length > 0 ? (
                       <>
                         <select
-                          className="w-full h-11 px-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700"
+                          className="w-full h-11 px-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 dark:text-white"
                           value={selectedNewCar}
                           onChange={(e) => setSelectedNewCar(e.target.value)}
                         >
@@ -1665,15 +1708,15 @@ export default function Dashboard() {
                         {selectedNewCar &&
                           swapOptions.find((c) => c.id === selectedNewCar)
                             ?.isBooked && (
-                            <div className="p-3 mt-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-sm">
+                            <div className="p-3 mt-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 text-sm">
                               ⚠️ <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
-                              จะถูกย้ายมาขับรถ <b>{swapBooking.cars?.plate}</b>{" "}
+                              จะถูกย้ายมาขับรถ <b className="dark:text-white">{swapBooking.cars?.plate}</b>{" "}
                               แทนอัตโนมัติ
                             </div>
                           )}
                       </>
                     ) : (
-                      <div className="p-3 bg-slate-50 text-slate-500 rounded-xl border border-slate-200 text-sm text-center">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-center">
                         ไม่มีรถในระบบให้สลับ
                       </div>
                     )}
@@ -1682,7 +1725,7 @@ export default function Dashboard() {
                   <Button
                     onClick={handleSwapSubmit}
                     disabled={!selectedNewCar || isSwapping}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-xl h-11 shadow-sm transition-all active:scale-95 disabled:opacity-50"
                   >
                     {isSwapping ? "กำลังดำเนินการ..." : "ยืนยันการสลับรถ"}
                   </Button>

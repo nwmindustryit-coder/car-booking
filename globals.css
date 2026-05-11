@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
 html, body {
   scroll-behavior: smooth;
 }
@@ -40,4 +43,3 @@ table {
     width: 100% !important;
   }
 }
-
