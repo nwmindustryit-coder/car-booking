@@ -20,6 +20,8 @@ import {
   Route,
   BarChart3,
   RefreshCw,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 type Row = {
@@ -53,6 +55,32 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+    }
+  };
 
   // 🔵 สรุปเวลาการใช้รถ (แบบไม่ใช้เลขไมล์)
   const aggregatedTime = useMemo(() => {
@@ -378,7 +406,7 @@ export default function ReportsPage() {
     }
   };
 
-  // ✨ ฟังก์ชันที่ 3: โหลดไฟล์ Excel สรุปสถิติ Premium (ที่ผมเผลอทำหายไป)
+  // ✨ ฟังก์ชันที่ 3: โหลดไฟล์ Excel สรุปสถิติ Premium
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Nawamit Industry System';
@@ -525,36 +553,36 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-12">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900 transition-colors duration-300 pb-12">
       <Navbar />
       <main className="p-4 sm:p-6 max-w-7xl mx-auto print:p-0 mt-4">
         {/* Header & Filters */}
         <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-8 print:hidden">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 bg-blue-600 rounded-xl shadow-sm text-white">
+              <div className="p-2.5 bg-blue-600 dark:bg-blue-500 rounded-xl shadow-sm text-white transition-colors">
                 <BarChart3 className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight transition-colors">
                 รายงานสถิติการใช้รถ
               </h1>
             </div>
-            <p className="text-slate-500 font-medium ml-14">
-              ช่วงเวลา: <span className="text-blue-600">{rangeLabel}</span>
+            <p className="text-slate-500 dark:text-slate-400 font-medium ml-14 transition-colors">
+              ช่วงเวลา: <span className="text-blue-600 dark:text-blue-400">{rangeLabel}</span>
             </p>
           </div>
 
-          <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap lg:flex-nowrap items-center gap-3 w-full xl:w-auto">
+          <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap lg:flex-nowrap items-center gap-3 w-full xl:w-auto transition-colors">
             {/* โหมดตัวกรอง */}
-            <div className="bg-slate-100 p-1 rounded-xl flex gap-1 items-center w-full sm:w-auto">
+            <div className="bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl flex gap-1 items-center w-full sm:w-auto transition-colors">
               <button
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === "month" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === "month" ? "bg-white text-blue-700 dark:bg-slate-700 dark:text-blue-400 shadow-sm" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"}`}
                 onClick={() => setMode("month")}
               >
                 <CalendarDays className="w-4 h-4" /> รายเดือน
               </button>
               <button
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === "range" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${mode === "range" ? "bg-white text-blue-700 dark:bg-slate-700 dark:text-blue-400 shadow-sm" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"}`}
                 onClick={() => setMode("range")}
               >
                 <CalendarRange className="w-4 h-4" /> ช่วงวันที่
@@ -569,7 +597,7 @@ export default function ReportsPage() {
                   onChange={(d: Date | null) => d && setMonth(d)}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
-                  className="w-[160px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
+                  className="w-[160px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                 />
               ) : (
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -577,35 +605,45 @@ export default function ReportsPage() {
                     selected={start}
                     onChange={(d: Date | null) => d && setStart(d)}
                     dateFormat="dd/MM/yyyy"
-                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
+                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                   <span className="text-slate-400 font-medium">-</span>
                   <DatePicker
                     selected={end}
                     onChange={(d: Date | null) => d && setEnd(d)}
                     dateFormat="dd/MM/yyyy"
-                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center"
+                    className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                 </div>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 w-full sm:w-auto px-1 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto px-1 border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-700 pt-3 sm:pt-0 sm:pl-3 transition-colors">
+              
+              {/* 🌙 ปุ่ม Toggle Dark Mode */}
+              <button
+                onClick={toggleTheme}
+                className="h-10 w-10 flex items-center justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 rounded-xl transition-colors dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white"
+                title={isDarkMode ? "Light Mode" : "Dark Mode"}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+              </button>
+
               <button
                 onClick={load}
                 disabled={loading}
-                className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center gap-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition-colors disabled:opacity-50"
+                className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center gap-2 bg-slate-800 dark:bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
-                {loading ? "กำลังโหลด..." : "ดึงข้อมูล"}
+                <span className="hidden sm:inline">{loading ? "กำลังโหลด..." : "ดึงข้อมูล"}</span>
               </button>
 
               <button
                 onClick={handlePrint}
-                className="h-10 w-10 flex items-center justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 rounded-xl transition-colors"
+                className="h-10 w-10 flex items-center justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 rounded-xl transition-colors dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white"
                 title="พิมพ์รายงาน"
               >
                 <Printer className="w-4 h-4" />
@@ -614,41 +652,41 @@ export default function ReportsPage() {
               <button
                 onClick={handleExportExcel}
                 disabled={aggregated.length === 0}
-                className="h-10 px-4 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale"
+                className="h-10 px-4 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale"
                 title="ดาวน์โหลดไฟล์ Excel สรุปสถิติ"
               >
-                <FileSpreadsheet className="w-4 h-4" /> สถิติรวม
+                <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">สถิติรวม</span>
               </button>
 
               <button
                 onClick={handleExportTaxLogbook}
                 disabled={loading}
-                className="h-10 px-4 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale shadow-sm"
+                className="h-10 px-4 flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:grayscale shadow-sm"
                 title="ดาวน์โหลดสมุดบันทึกการใช้รถสำหรับสรรพากร"
               >
-                <FileSpreadsheet className="w-4 h-4" /> สมุดเบิกสรรพากร
+                <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">สมุดเบิกสรรพากร</span>
               </button>
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in transition-colors">
             ⚠️ {error}
           </div>
         )}
 
         {/* 📊 KPI Cards Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 print:hidden">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-5 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <Route className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 จำนวนทริปทั้งหมด
               </p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
                 {totalTrips.toLocaleString("th-TH")}{" "}
                 <span className="text-sm font-medium text-slate-400">
                   ครั้ง
@@ -656,29 +694,29 @@ export default function ReportsPage() {
               </h3>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-5 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <CarFront className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 รวมระยะทางขับขี่ (ที่บันทึกไมล์)
               </p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
                 {totalKm.toLocaleString("th-TH")}{" "}
                 <span className="text-sm font-medium text-slate-400">กม.</span>
               </h3>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-5 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 รวมเวลาการใช้รถ
               </p>
-              <h3 className="text-xl font-bold text-slate-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">
                 {formatMinutesToReadable(totalMinutes)}
               </h3>
             </div>
@@ -687,33 +725,33 @@ export default function ReportsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:block print:space-y-8">
           {/* ตารางที่ 1: สรุปต่อทะเบียน */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-              <CarFront className="w-5 h-5 text-blue-600" />
-              <h2 className="font-bold text-slate-800">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-slate-300 transition-colors">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+              <CarFront className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h2 className="font-bold text-slate-800 dark:text-white">
                 สรุปการใช้รถต่อทะเบียน (บันทึกไมล์)
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-medium">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-medium border-b dark:border-slate-700">
                   <tr>
                     <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
                     <th className="px-5 py-3 text-right">จำนวนทริป</th>
                     <th className="px-5 py-3 text-right">รวมระยะทาง</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                   {aggregated.map((r) => (
                     <tr
                       key={r.plate}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       <td className="px-5 py-3 font-medium">{r.plate}</td>
                       <td className="px-5 py-3 text-right font-mono">
                         {r.trips.toLocaleString("th-TH")}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-emerald-600 font-medium">
+                      <td className="px-5 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400 font-medium">
                         {r.totalKm.toLocaleString("th-TH")} กม.
                       </td>
                     </tr>
@@ -721,7 +759,7 @@ export default function ReportsPage() {
                   {aggregated.length === 0 && (
                     <tr>
                       <td
-                        className="p-8 text-center text-slate-400"
+                        className="p-8 text-center text-slate-400 dark:text-slate-500"
                         colSpan={3}
                       >
                         ไม่พบข้อมูลในระบบ
@@ -734,16 +772,16 @@ export default function ReportsPage() {
           </div>
 
           {/* ตารางที่ 2: สรุปต่อแผนก */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-              <Building2 className="w-5 h-5 text-indigo-600" />
-              <h2 className="font-bold text-slate-800">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-slate-300 transition-colors">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="font-bold text-slate-800 dark:text-white">
                 สรุปการใช้รถต่อแผนก (บันทึกไมล์)
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-medium">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-medium border-b dark:border-slate-700">
                   <tr>
                     <th className="px-5 py-3 text-left">แผนก</th>
                     <th className="px-5 py-3 text-right">ทริป</th>
@@ -751,20 +789,20 @@ export default function ReportsPage() {
                     <th className="px-5 py-3 text-right">เวลารวม</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                   {byDepartment.map((r) => (
                     <tr
                       key={r.department}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       <td className="px-5 py-3 font-medium">{r.department}</td>
                       <td className="px-5 py-3 text-right font-mono">
                         {r.trips.toLocaleString("th-TH")}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-emerald-600 font-medium">
+                      <td className="px-5 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400 font-medium">
                         {r.totalKm.toLocaleString("th-TH")}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-500">
+                      <td className="px-5 py-3 text-right text-slate-500 dark:text-slate-400">
                         {formatMinutesToReadable(r.totalMinutes)}
                       </td>
                     </tr>
@@ -772,7 +810,7 @@ export default function ReportsPage() {
                   {byDepartment.length === 0 && (
                     <tr>
                       <td
-                        className="p-8 text-center text-slate-400"
+                        className="p-8 text-center text-slate-400 dark:text-slate-500"
                         colSpan={4}
                       >
                         ไม่พบข้อมูลในระบบ
@@ -785,38 +823,38 @@ export default function ReportsPage() {
           </div>
 
           {/* ตารางที่ 3: สรุปเวลาต่อทะเบียน */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-purple-50/30">
-              <Clock className="w-5 h-5 text-purple-600" />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-slate-300 transition-colors">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-purple-50/30 dark:bg-purple-900/10">
+              <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               <div>
-                <h2 className="font-bold text-slate-800">
+                <h2 className="font-bold text-slate-800 dark:text-white">
                   สรุปเวลาการใช้รถต่อทะเบียน
                 </h2>
-                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                   คำนวณจากช่วงเวลาจอง ไม่อิงเลขไมล์
                 </p>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-medium">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-medium border-b dark:border-slate-700">
                   <tr>
                     <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
                     <th className="px-5 py-3 text-center">จำนวนทริป</th>
                     <th className="px-5 py-3 text-right">เวลารวม</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                   {aggregatedTime.map((r) => (
                     <tr
                       key={r.plate}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       <td className="px-5 py-3 font-medium">{r.plate}</td>
                       <td className="px-5 py-3 text-center font-mono">
                         {r.trips}
                       </td>
-                      <td className="px-5 py-3 text-right font-medium text-purple-700">
+                      <td className="px-5 py-3 text-right font-medium text-purple-700 dark:text-purple-400">
                         {formatMinutesToReadable(r.totalMinutes)}
                       </td>
                     </tr>
@@ -824,7 +862,7 @@ export default function ReportsPage() {
                   {aggregatedTime.length === 0 && (
                     <tr>
                       <td
-                        className="p-8 text-center text-slate-400"
+                        className="p-8 text-center text-slate-400 dark:text-slate-500"
                         colSpan={3}
                       >
                         ไม่พบข้อมูลในระบบ
@@ -837,38 +875,38 @@ export default function ReportsPage() {
           </div>
 
           {/* ตารางที่ 4: สรุปเวลาต่อแผนก */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-purple-50/30">
-              <Clock className="w-5 h-5 text-purple-600" />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-slate-300 transition-colors">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-purple-50/30 dark:bg-purple-900/10">
+              <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               <div>
-                <h2 className="font-bold text-slate-800">
+                <h2 className="font-bold text-slate-800 dark:text-white">
                   สรุปเวลาการใช้รถต่อแผนก
                 </h2>
-                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                   คำนวณจากช่วงเวลาจอง ไม่อิงเลขไมล์
                 </p>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-medium">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-medium border-b dark:border-slate-700">
                   <tr>
                     <th className="px-5 py-3 text-left">แผนก</th>
                     <th className="px-5 py-3 text-center">จำนวนทริป</th>
                     <th className="px-5 py-3 text-right">เวลารวมทั้งหมด</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                   {aggregatedTimeByDept.map((r) => (
                     <tr
                       key={r.department}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       <td className="px-5 py-3 font-medium">{r.department}</td>
                       <td className="px-5 py-3 text-center font-mono">
                         {r.trips.toLocaleString("th-TH")}
                       </td>
-                      <td className="px-5 py-3 text-right font-medium text-purple-700">
+                      <td className="px-5 py-3 text-right font-medium text-purple-700 dark:text-purple-400">
                         {formatMinutesToReadable(r.totalMinutes)}
                       </td>
                     </tr>
@@ -876,7 +914,7 @@ export default function ReportsPage() {
                   {aggregatedTimeByDept.length === 0 && (
                     <tr>
                       <td
-                        className="p-8 text-center text-slate-400"
+                        className="p-8 text-center text-slate-400 dark:text-slate-500"
                         colSpan={3}
                       >
                         ไม่พบข้อมูลในระบบ
@@ -890,16 +928,16 @@ export default function ReportsPage() {
         </div>
 
         {/* ตารางรายการดิบ เต็มความกว้าง */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-slate-300">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-            <Route className="w-5 h-5 text-slate-600" />
-            <h2 className="font-bold text-slate-800">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden print:shadow-none print:border-slate-300 transition-colors">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+            <Route className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            <h2 className="font-bold text-slate-800 dark:text-white">
               รายการดิบรายทริป (เฉพาะที่มีการบันทึกเลขไมล์)
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 font-medium">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-medium border-b dark:border-slate-700">
                 <tr>
                   <th className="px-5 py-3 text-left">วันที่</th>
                   <th className="px-5 py-3 text-left">ทะเบียนรถ</th>
@@ -907,21 +945,21 @@ export default function ReportsPage() {
                   <th className="px-5 py-3 text-right">ระยะทาง (กม.)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                 {rowsWithMile
-                  .sort((a, b) => b.date.localeCompare(a.date)) // เรียงใหม่ไปเก่าดีกว่า
+                  .sort((a, b) => b.date.localeCompare(a.date))
                   .map((r, idx) => (
                     <tr
                       key={`${r.plate}_${r.date}_${idx}`}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors"
                     >
-                      <td className="px-5 py-3 font-medium text-slate-600">
+                      <td className="px-5 py-3 font-medium text-slate-600 dark:text-slate-400">
                         {format(new Date(r.date), "dd MMM yyyy", {
                           locale: th,
                         })}
                       </td>
                       <td className="px-5 py-3 font-medium">{r.plate}</td>
-                      <td className="px-5 py-3 text-slate-500">
+                      <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
                         {r.department}
                       </td>
                       <td className="px-5 py-3 text-right font-mono font-medium">
@@ -931,7 +969,7 @@ export default function ReportsPage() {
                   ))}
                 {rowsWithMile.length === 0 && (
                   <tr>
-                    <td className="p-12 text-center text-slate-400" colSpan={4}>
+                    <td className="p-12 text-center text-slate-400 dark:text-slate-500" colSpan={4}>
                       ไม่พบข้อมูลในระบบ
                     </td>
                   </tr>

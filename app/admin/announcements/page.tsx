@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit, Eye, EyeOff, CalendarClock } from "lucide-react";
+import { Trash2, Edit, Eye, EyeOff, CalendarClock, Sun, Moon } from "lucide-react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { format } from "date-fns";
@@ -19,6 +19,9 @@ export default function AdminAnnouncements() {
   const [isEditing, setIsEditing] = useState(false);
   const quillRef = useRef<any>(null);
 
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // ✅ เพิ่ม start_date และ end_date ใน State (ตั้งค่าเริ่มต้นเป็นวันนี้ ถึง อีก 7 วันข้างหน้า)
   const [form, setForm] = useState({
     id: "",
@@ -28,6 +31,29 @@ export default function AdminAnnouncements() {
     start_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     end_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm"),
   });
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+    }
+  };
 
   const loadAnnouncements = async () => {
     setLoading(true);
@@ -142,30 +168,77 @@ export default function AdminAnnouncements() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
       <Navbar />
-      <main className="p-6 max-w-5xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-slate-800">จัดการประกาศ (Announcements)</h1>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-semibold mb-4 text-blue-700">
+      {/* ✨ CSS พิเศษสำหรับปรับสี ReactQuill ใน Dark Mode */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .dark .ql-toolbar.ql-snow {
+          background-color: #1e293b;
+          border-color: #334155;
+        }
+        .dark .ql-container.ql-snow {
+          border-color: #334155;
+          background-color: #0f172a;
+        }
+        .dark .ql-editor {
+          color: #f8fafc;
+        }
+        .dark .ql-snow .ql-stroke {
+          stroke: #94a3b8;
+        }
+        .dark .ql-snow .ql-fill, .dark .ql-snow .ql-stroke.ql-fill {
+          fill: #94a3b8;
+        }
+        .dark .ql-snow .ql-picker {
+          color: #94a3b8;
+        }
+        .dark .ql-snow .ql-picker-options {
+          background-color: #1e293b;
+          border-color: #334155;
+        }
+      `}} />
+
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6 mt-4">
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-4 transition-colors">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">จัดการประกาศ (Announcements)</h1>
+          {/* 🌙 ปุ่ม Toggle Dark Mode */}
+          <Button
+            onClick={toggleTheme}
+            variant="outline"
+            className="w-full sm:w-auto bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {isDarkMode ? (
+              <Sun className="w-4 h-4 mr-2 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+            )}
+            {isDarkMode ? "Light Mode" : "Dark Mode"}
+          </Button>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+          <h2 className="text-lg font-semibold mb-4 text-blue-700 dark:text-blue-400">
             {isEditing ? "✏️ แก้ไขประกาศ" : "📢 สร้างประกาศใหม่"}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">หัวข้อประกาศ</label>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">หัวข้อประกาศ</label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="เช่น แจ้งหยุดสงกรานต์"
                 required
+                className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
               />
             </div>
             
             {/* ✅ ส่วนกำหนดวันที่แสดงผล */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-slate-900/50 border border-blue-100 dark:border-slate-700 rounded-xl transition-colors">
               <div>
-                <label className="block text-sm font-medium text-blue-800 mb-1 flex items-center gap-1">
+                <label className="block text-sm font-medium text-blue-800 dark:text-blue-400 mb-1 flex items-center gap-1">
                   <CalendarClock className="w-4 h-4"/> เริ่มแสดงผล
                 </label>
                 <Input
@@ -173,11 +246,11 @@ export default function AdminAnnouncements() {
                   value={form.start_date}
                   onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                   required
-                  className="bg-white"
+                  className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 dark:text-white dark:[color-scheme:dark]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-blue-800 mb-1 flex items-center gap-1">
+                <label className="block text-sm font-medium text-blue-800 dark:text-blue-400 mb-1 flex items-center gap-1">
                   <CalendarClock className="w-4 h-4"/> สิ้นสุดการแสดงผล
                 </label>
                 <Input
@@ -185,20 +258,20 @@ export default function AdminAnnouncements() {
                   value={form.end_date}
                   onChange={(e) => setForm({ ...form, end_date: e.target.value })}
                   required
-                  className="bg-white"
+                  className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 dark:text-white dark:[color-scheme:dark]"
                 />
               </div>
             </div>
             
             <div className="pb-12">
-              <label className="block text-sm font-medium text-slate-600 mb-1">เนื้อหาประกาศ (ฝั่ง User จะเห็นตามนี้เป๊ะๆ)</label>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">เนื้อหาประกาศ (ฝั่ง User จะเห็นตามนี้เป๊ะๆ)</label>
               <div className="h-64">
                 <ReactQuill 
                   theme="snow" 
                   value={form.content} 
                   onChange={(val) => setForm({ ...form, content: val })}
                   modules={modules}
-                  className="h-full bg-white rounded-md"
+                  className="h-full rounded-md"
                 />
               </div>
             </div>
@@ -209,19 +282,19 @@ export default function AdminAnnouncements() {
                 id="isActive"
                 checked={form.is_active}
                 onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-blue-500"
               />
-              <label htmlFor="isActive" className="text-sm font-medium text-slate-700 cursor-pointer">
+              <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
                 เปิดสวิตช์หลัก (หากปิด ประกาศจะไม่แสดงแม้จะอยู่ในช่วงเวลาก็ตาม)
               </label>
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-sm">
                 {isEditing ? "💾 บันทึกการแก้ไข" : "🚀 บันทึกและตั้งเวลา"}
               </Button>
               {isEditing && (
-                <Button type="button" variant="outline" onClick={() => { 
+                <Button type="button" variant="outline" className="dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" onClick={() => { 
                   setForm({ id: "", title: "", content: "", is_active: true, start_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"), end_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm") }); 
                   setIsEditing(false); 
                 }}>
@@ -233,10 +306,10 @@ export default function AdminAnnouncements() {
         </div>
 
         {/* ตารางแสดงประกาศ */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-600 border-b whitespace-nowrap">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-b dark:border-slate-700 whitespace-nowrap">
                 <tr>
                   <th className="p-4 font-medium">หัวข้อ</th>
                   <th className="p-4 font-medium">ช่วงเวลาแสดงผล</th>
@@ -244,11 +317,11 @@ export default function AdminAnnouncements() {
                   <th className="p-4 font-medium text-right">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {loading ? (
-                  <tr><td colSpan={4} className="p-8 text-center text-slate-500">กำลังโหลดข้อมูล...</td></tr>
+                  <tr><td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400">กำลังโหลดข้อมูล...</td></tr>
                 ) : announcements.length === 0 ? (
-                  <tr><td colSpan={4} className="p-8 text-center text-slate-500">ยังไม่มีประกาศในระบบ</td></tr>
+                  <tr><td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400">ยังไม่มีประกาศในระบบ</td></tr>
                 ) : (
                   announcements.map((item) => {
                     const now = new Date();
@@ -258,15 +331,15 @@ export default function AdminAnnouncements() {
                     const isTimeActive = now >= start && now <= end;
                     
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-medium text-slate-800">{item.title}</td>
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="p-4 font-medium text-slate-800 dark:text-slate-200">{item.title}</td>
                         <td className="p-4">
-                          <div className="text-xs text-slate-600">
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
                             เริ่ม: {format(start, "dd MMM yy HH:mm", { locale: th })}<br/>
                             จบ: {format(end, "dd MMM yy HH:mm", { locale: th })}
                           </div>
                           {item.is_active && (
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${isTimeActive ? 'bg-emerald-100 text-emerald-700' : now > end ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium border ${isTimeActive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 dark:border-emerald-800/50' : now > end ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 dark:border-slate-700' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 dark:border-amber-800/50'}`}>
                               {isTimeActive ? "กำลังแสดงผล" : now > end ? "หมดเวลา" : "รอเวลาแสดง"}
                             </span>
                           )}
@@ -274,16 +347,16 @@ export default function AdminAnnouncements() {
                         <td className="p-4 text-center">
                           <button 
                             onClick={() => toggleActive(item.id, item.is_active)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 mx-auto transition-colors ${item.is_active ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 mx-auto transition-colors ${item.is_active ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' : 'bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}
                           >
                             {item.is_active ? <><Eye className="w-3 h-3"/> เปิด</> : <><EyeOff className="w-3 h-3"/> ปิด</>}
                           </button>
                         </td>
                         <td className="p-4 text-right space-x-2 whitespace-nowrap">
-                          <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="text-amber-600 hover:bg-amber-50">
+                          <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50">
+                          <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </td>

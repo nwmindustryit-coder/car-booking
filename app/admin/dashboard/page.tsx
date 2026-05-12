@@ -2,10 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button"; // ✨ เพิ่มปุ่ม
 
 // ✅ 1. เพิ่ม Import สำหรับ format วันที่ (แก้ Error)
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { Moon, Sun } from "lucide-react"; // ✨ นำเข้าไอคอนสำหรับปุ่มสลับโหมด
 
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 
@@ -36,7 +38,6 @@ ChartJS.register(
 
 // ✅ ตั้งค่า Global Options ให้ Tooltip ของทุกกราฟดูพรีเมียม
 ChartJS.defaults.font.family = "'Prompt', 'Sarabun', sans-serif"; // รองรับฟอนต์ไทย
-ChartJS.defaults.color = "#64748b";
 
 const tooltipOptions = {
   backgroundColor: "rgba(15, 23, 42, 0.9)",
@@ -70,6 +71,36 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [modalData, setModalData] = useState<any[] | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
+
+  // 🌙 State สำหรับ Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ และเปลี่ยนสี ChartJS
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("dashboardTheme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      ChartJS.defaults.color = "#94a3b8"; // สีฟอนต์กราฟในโหมดมืด
+    } else {
+      document.documentElement.classList.remove("dark");
+      ChartJS.defaults.color = "#64748b"; // สีฟอนต์กราฟในโหมดสว่าง
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("dashboardTheme", "light");
+      ChartJS.defaults.color = "#64748b";
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("dashboardTheme", "dark");
+      ChartJS.defaults.color = "#94a3b8";
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -227,9 +258,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50">
+      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <svg
-          className="animate-spin h-10 w-10 mb-4 text-blue-500"
+          className="animate-spin h-10 w-10 mb-4 text-blue-500 dark:text-blue-400"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -248,7 +279,7 @@ export default function DashboardPage() {
             d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
           />
         </svg>
-        <p className="text-slate-500 font-medium animate-pulse">
+        <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">
           กำลังประมวลผล Dashboard...
         </p>
       </main>
@@ -256,54 +287,69 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
       <Navbar />
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 mt-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight mb-8">
-          Dashboard การใช้รถองค์กร
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 mb-8 transition-colors">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
+            Dashboard การใช้รถองค์กร
+          </h1>
+          {/* 🌙 ปุ่ม Toggle Dark Mode */}
+          <Button
+            onClick={toggleTheme}
+            variant="outline"
+            className="w-full sm:w-auto bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {isDarkMode ? (
+              <Sun className="w-4 h-4 mr-2 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+            )}
+            {isDarkMode ? "Light Mode" : "Dark Mode"}
+          </Button>
+        </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 border border-red-100 flex items-center">
+          <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl mb-6 border border-red-100 dark:border-red-800/50 flex items-center transition-colors">
             <span className="mr-2">⚠️</span> เกิดข้อผิดพลาด: {error}
           </div>
         )}
 
         {/* KPI CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <div className="p-6 rounded-2xl shadow-sm bg-white border border-slate-100 flex flex-col justify-center relative overflow-hidden group hover:border-blue-200 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-110 transition-transform"></div>
-            <p className="text-sm font-medium text-slate-500 mb-1 z-10">
+          <div className="p-6 rounded-2xl shadow-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col justify-center relative overflow-hidden group hover:border-blue-200 dark:hover:border-blue-500/50 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full group-hover:scale-110 transition-transform"></div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 z-10">
               จำนวนทริปทั้งหมด
             </p>
-            <p className="text-3xl font-bold text-blue-600 z-10">
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 z-10">
               {rows.length.toLocaleString("th-TH")}
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl shadow-sm bg-white border border-slate-100 flex flex-col justify-center relative overflow-hidden group hover:border-indigo-200 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform"></div>
-            <p className="text-sm font-medium text-slate-500 mb-1 z-10">
+          <div className="p-6 rounded-2xl shadow-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col justify-center relative overflow-hidden group hover:border-indigo-200 dark:hover:border-indigo-500/50 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-full group-hover:scale-110 transition-transform"></div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 z-10">
               รวมระยะทาง (กม.)
             </p>
-            <p className="text-3xl font-bold text-indigo-600 z-10">
+            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 z-10">
               {aggregated.reduce((a, b) => a + b.km, 0).toLocaleString("th-TH")}
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl shadow-sm bg-white border border-slate-100 flex flex-col justify-center relative overflow-hidden group hover:border-emerald-200 transition-colors">
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-110 transition-transform"></div>
-            <p className="text-sm font-medium text-slate-500 mb-1 z-10">
+          <div className="p-6 rounded-2xl shadow-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col justify-center relative overflow-hidden group hover:border-emerald-200 dark:hover:border-emerald-500/50 transition-colors">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 rounded-full group-hover:scale-110 transition-transform"></div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 z-10">
               เวลาการใช้งานรวม
             </p>
-            <p className="text-2xl font-bold text-emerald-600 z-10 mt-1">
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 z-10 mt-1">
               {formatDuration(aggregated.reduce((a, b) => a + b.mins, 0))}
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl shadow-sm bg-gradient-to-br from-slate-800 to-slate-700 text-white flex flex-col justify-center relative overflow-hidden shadow-slate-200">
-            <div className="absolute right-0 bottom-0 w-24 h-24 bg-white opacity-5 rounded-tl-full"></div>
+          <div className="p-6 rounded-2xl shadow-sm bg-gradient-to-br from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800 text-white flex flex-col justify-center relative overflow-hidden shadow-slate-200 dark:shadow-none transition-colors border dark:border-slate-700">
+            <div className="absolute right-0 bottom-0 w-24 h-24 bg-white dark:bg-blue-400 opacity-5 rounded-tl-full"></div>
             <p className="text-sm font-medium opacity-80 mb-1 z-10">
               จำนวนรถในระบบ
             </p>
@@ -315,25 +361,25 @@ export default function DashboardPage() {
         </div>
 
         {/* WIDGET CAR AVAILABILITY */}
-        <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
           <div>
-            <h2 className="font-semibold text-slate-800 text-lg">
+            <h2 className="font-semibold text-slate-800 dark:text-white text-lg">
               สถานะรถวันนี้
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {format(new Date(), "EEEEที่ dd MMMM yyyy", { locale: th })}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl flex items-center gap-2">
+            <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
               </span>
               <span className="font-semibold">ว่าง {freeCars.length} คัน</span>
             </div>
-            <div className="bg-orange-50 text-orange-700 border border-orange-200 px-4 py-2 rounded-xl flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-orange-500"></span>
+            <div className="bg-orange-50 dark:bg-amber-900/30 text-orange-700 dark:text-amber-400 border border-orange-200 dark:border-amber-800/50 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
+              <span className="h-3 w-3 rounded-full bg-orange-500 dark:bg-amber-500"></span>
               <span className="font-semibold">
                 ถูกใช้งาน {busyCars.length} คัน
               </span>
@@ -343,8 +389,8 @@ export default function DashboardPage() {
 
         {/* BAR CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white p-6 shadow-sm border border-slate-100 rounded-2xl">
-            <h2 className="font-semibold mb-4 text-slate-800 text-lg">
+          <div className="bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl transition-colors">
+            <h2 className="font-semibold mb-4 text-slate-800 dark:text-white text-lg">
               ระยะทางรวมแยกตามทะเบียน (กม.)
             </h2>
             <div className="h-72 w-full">
@@ -373,7 +419,7 @@ export default function DashboardPage() {
                   scales: {
                     y: {
                       beginAtZero: true,
-                      grid: { color: "#f1f5f9" },
+                      grid: { color: isDarkMode ? "#334155" : "#f1f5f9" },
                       border: { display: false },
                     },
                     x: { grid: { display: false }, border: { display: false } },
@@ -389,8 +435,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 shadow-sm border border-slate-100 rounded-2xl">
-            <h2 className="font-semibold mb-4 text-slate-800 text-lg">
+          <div className="bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl transition-colors">
+            <h2 className="font-semibold mb-4 text-slate-800 dark:text-white text-lg">
               เวลาการใช้งานแยกตามทะเบียน (นาที)
             </h2>
             <div className="h-72 w-full">
@@ -419,7 +465,7 @@ export default function DashboardPage() {
                   scales: {
                     y: {
                       beginAtZero: true,
-                      grid: { color: "#f1f5f9" },
+                      grid: { color: isDarkMode ? "#334155" : "#f1f5f9" },
                       border: { display: false },
                     },
                     x: { grid: { display: false }, border: { display: false } },
@@ -432,8 +478,8 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* DOUGHNUT */}
-          <div className="bg-white p-6 shadow-sm border border-slate-100 rounded-2xl flex flex-col">
-            <h2 className="font-semibold text-slate-800 text-lg mb-2">
+          <div className="bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl flex flex-col transition-colors">
+            <h2 className="font-semibold text-slate-800 dark:text-white text-lg mb-2">
               สัดส่วนทริปตามแผนก
             </h2>
             <div className="flex-1 flex justify-center items-center h-72 w-full relative">
@@ -451,7 +497,8 @@ export default function DashboardPage() {
                         "#0ea5e9",
                         "#cbd5e1",
                       ],
-                      borderWidth: 0,
+                      borderWidth: isDarkMode ? 2 : 0,
+                      borderColor: isDarkMode ? "#1e293b" : "#ffffff", // เส้นขอบสีเดียวกับพื้นหลัง Card ใน Dark Mode
                       hoverOffset: 4,
                     },
                   ],
@@ -459,7 +506,7 @@ export default function DashboardPage() {
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  cutout: "75%", // รูตรงกลางกว้างขึ้น ดูพรีเมียม
+                  cutout: "75%",
                   plugins: {
                     legend: {
                       position: "bottom",
@@ -467,6 +514,7 @@ export default function DashboardPage() {
                         usePointStyle: true,
                         padding: 20,
                         font: { family: "'Prompt', sans-serif" },
+                        color: isDarkMode ? "#94a3b8" : "#64748b",
                       },
                     },
                     tooltip: tooltipOptions,
@@ -475,10 +523,10 @@ export default function DashboardPage() {
               />
               {/* ข้อความตรงกลางโดนัท */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                <span className="text-3xl font-bold text-slate-800">
+                <span className="text-3xl font-bold text-slate-800 dark:text-white transition-colors">
                   {rows.length}
                 </span>
-                <span className="text-xs text-slate-500 uppercase tracking-wider">
+                <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">
                   ทริปรวม
                 </span>
               </div>
@@ -486,8 +534,8 @@ export default function DashboardPage() {
           </div>
 
           {/* LINE CHART */}
-          <div className="bg-white p-6 shadow-sm border border-slate-100 rounded-2xl">
-            <h2 className="font-semibold mb-4 text-slate-800 text-lg">
+          <div className="bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl transition-colors">
+            <h2 className="font-semibold mb-4 text-slate-800 dark:text-white text-lg">
               แนวโน้มจำนวนทริปรายวัน
             </h2>
             <div className="h-72 w-full">
@@ -501,13 +549,13 @@ export default function DashboardPage() {
                       label: "จำนวนทริป",
                       data: Object.values(tripsPerDay),
                       borderColor: "#3b82f6",
-                      backgroundColor: "rgba(59, 130, 246, 0.15)", // สีแรเงาใต้กราฟ
+                      backgroundColor: isDarkMode ? "rgba(59, 130, 246, 0.25)" : "rgba(59, 130, 246, 0.15)", // ปรับแรเงาใน Dark mode
                       borderWidth: 3,
-                      fill: true, // เปิดแรเงา
-                      tension: 0.4, // โค้งมน
-                      pointRadius: 0, // ซ่อนจุด
-                      pointHoverRadius: 6, // ขยายจุดตอนโฮเวอร์
-                      pointBackgroundColor: "#ffffff",
+                      fill: true,
+                      tension: 0.4,
+                      pointRadius: 0,
+                      pointHoverRadius: 6,
+                      pointBackgroundColor: isDarkMode ? "#1e293b" : "#ffffff",
                       pointBorderColor: "#3b82f6",
                       pointBorderWidth: 2,
                     },
@@ -516,7 +564,7 @@ export default function DashboardPage() {
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  interaction: { mode: "index", intersect: false }, // โฮเวอร์ง่ายขึ้น
+                  interaction: { mode: "index", intersect: false },
                   plugins: {
                     legend: { display: false },
                     tooltip: tooltipOptions,
@@ -524,7 +572,7 @@ export default function DashboardPage() {
                   scales: {
                     y: {
                       beginAtZero: true,
-                      grid: { color: "#f1f5f9" },
+                      grid: { color: isDarkMode ? "#334155" : "#f1f5f9" },
                       border: { display: false },
                       ticks: { stepSize: 1, padding: 10 },
                     },
@@ -548,8 +596,8 @@ export default function DashboardPage() {
         </div>
 
         {/* MONTHLY SUMMARY (2 months) */}
-        <div className="bg-white p-6 shadow-sm border border-slate-100 rounded-2xl">
-          <h2 className="font-semibold mb-4 text-slate-800 text-lg">
+        <div className="bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl transition-colors">
+          <h2 className="font-semibold mb-4 text-slate-800 dark:text-white text-lg">
             สรุปสถิติ 2 เดือนล่าสุด
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -564,15 +612,15 @@ export default function DashboardPage() {
               return (
                 <div
                   key={m.month}
-                  className="bg-slate-50 border border-slate-100 rounded-xl p-5"
+                  className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl p-5 transition-colors"
                 >
-                  <h3 className="font-bold text-lg text-indigo-700 mb-4 pb-2 border-b border-slate-200">
+                  <h3 className="font-bold text-lg text-indigo-700 dark:text-indigo-400 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
                     เดือน {monthName}
                   </h3>
-                  <div className="space-y-3 text-slate-700">
+                  <div className="space-y-3 text-slate-700 dark:text-slate-300">
                     <div className="flex justify-between items-center">
                       <span className="flex items-center gap-2">
-                        <span className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                        <span className="p-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
                           🚘
                         </span>{" "}
                         จำนวนทริป
@@ -581,7 +629,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="flex items-center gap-2">
-                        <span className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                        <span className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
                           🛣️
                         </span>{" "}
                         รวมระยะทาง
@@ -592,7 +640,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="flex items-center gap-2">
-                        <span className="p-1.5 bg-orange-100 text-orange-600 rounded-lg">
+                        <span className="p-1.5 bg-orange-100 dark:bg-amber-900/40 text-orange-600 dark:text-amber-400 rounded-lg">
                           ⏱️
                         </span>{" "}
                         เวลาใช้งาน
@@ -611,19 +659,19 @@ export default function DashboardPage() {
         {/* MODAL (Drill Down) */}
         {modalData && (
           <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all"
             onClick={() => setModalData(null)}
           >
             <div
-              className="bg-white p-0 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white dark:bg-slate-800 p-0 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border dark:border-slate-700 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center transition-colors">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
                   {modalTitle}
                 </h3>
                 <button
-                  className="text-slate-400 hover:text-slate-600 p-1 bg-slate-100 rounded-full"
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-white p-1 bg-slate-100 dark:bg-slate-700 rounded-full transition-colors"
                   onClick={() => setModalData(null)}
                 >
                   ✕
@@ -632,40 +680,40 @@ export default function DashboardPage() {
 
               <div className="overflow-y-auto flex-1 p-6">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-500">
+                  <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 transition-colors">
                     <tr className="text-left">
-                      <th className="p-3 font-medium rounded-l-lg border-b border-slate-200">
+                      <th className="p-3 font-medium rounded-l-lg border-b border-slate-200 dark:border-slate-700">
                         วันที่
                       </th>
-                      <th className="p-3 font-medium border-b border-slate-200">
+                      <th className="p-3 font-medium border-b border-slate-200 dark:border-slate-700">
                         แผนก
                       </th>
-                      <th className="p-3 font-medium text-right border-b border-slate-200">
+                      <th className="p-3 font-medium text-right border-b border-slate-200 dark:border-slate-700">
                         ไมล์
                       </th>
-                      <th className="p-3 font-medium text-right rounded-r-lg border-b border-slate-200">
+                      <th className="p-3 font-medium text-right rounded-r-lg border-b border-slate-200 dark:border-slate-700">
                         เวลา
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 transition-colors">
                     {modalData.map((r: any, i: number) => (
                       <tr
                         key={i}
-                        className="hover:bg-blue-50/50 transition-colors"
+                        className="hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors"
                       >
-                        <td className="p-3 text-slate-700">
+                        <td className="p-3 text-slate-700 dark:text-slate-300">
                           {format(new Date(r.date), "dd MMM yy", {
                             locale: th,
                           })}
                         </td>
-                        <td className="p-3 text-slate-700 font-medium">
+                        <td className="p-3 text-slate-700 dark:text-slate-200 font-medium">
                           {r.department}
                         </td>
-                        <td className="p-3 text-right text-slate-600">
+                        <td className="p-3 text-right text-slate-600 dark:text-slate-400">
                           {r.km.toLocaleString()} กม.
                         </td>
-                        <td className="p-3 text-right text-slate-600">
+                        <td className="p-3 text-right text-slate-600 dark:text-slate-400">
                           {formatDuration(r.mins)}
                         </td>
                       </tr>
