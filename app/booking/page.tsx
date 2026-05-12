@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { format } from "date-fns"; 
+import { th } from "date-fns/locale";
 import { 
   ArrowLeft, CalendarDays, CarFront, User, MapPin, 
   AlignLeft, CheckCircle2, Clock, CalendarCheck , ChevronDown
@@ -78,37 +80,41 @@ export default function BookingPage() {
     init();
   }, [router]);
 
-  useEffect(() => {
-    const checkBookings = async () => {
-      if (!form.car_id || !date) return;
-      const formattedDate = date.toLocaleDateString("sv-SE");
+  const fetchBookingStatus = useCallback(async () => {
+    if (!form.car_id || !date) return;
+    const formattedDate = format(date, "yyyy-MM-dd");
 
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("time_slot, driver_name")
-        .eq("car_id", form.car_id)
-        .eq("date", formattedDate);
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("time_slot, driver_name")
+      .eq("car_id", form.car_id)
+      .eq("date", formattedDate);
 
-      if (error) {
-        console.error("Error loading bookings:", error);
-        return;
-      }
+    if (error) {
+      console.error("Error loading bookings:", error);
+      return;
+    }
 
-      const status: Record<string, string> = {};
-      for (const slot of TIME_SLOTS) status[slot] = "ว่าง";
+    const status: Record<string, string> = {};
+    for (const slot of TIME_SLOTS) status[slot] = "ว่าง";
 
-      for (const booking of data || []) {
-        const bookedSlots = booking.time_slot.split(",").map((s) => s.trim());
-        for (const slot of TIME_SLOTS) {
-          if (bookedSlots.includes(slot)) {
-            status[slot] = booking.driver_name;
-          }
+    for (const booking of data || []) {
+      const bookedSlots = booking.time_slot?.split(",").map((s: string) => s.trim()) || [];
+      for (const slot of TIME_SLOTS) {
+        if (bookedSlots.includes(slot)) {
+          status[slot] = booking.driver_name;
         }
       }
-      setBookingStatus(status);
-    };
+    }
+    setBookingStatus(status);
+  }, [form.car_id, date]);
 
-    checkBookings();
+  useEffect(() => {
+    fetchBookingStatus();
+  }, [fetchBookingStatus]);
+
+  useEffect(() => {
+    setSelectedTimes([]);
   }, [form.car_id, date]);
 
   const toggleTimeSlot = (slot: string) => {
@@ -117,15 +123,37 @@ export default function BookingPage() {
     );
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!date) return alert("กรุณาเลือกวันที่ก่อนทำรายการ");
     if (!form.car_id || selectedTimes.length === 0)
       return alert("กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง");
 
     setIsSubmitting(true);
 
     try {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      
+      const { data: checkData, error: checkError } = await supabase
+        .from("bookings")
+        .select("time_slot")
+        .eq("car_id", form.car_id)
+        .eq("date", formattedDate);
+
+      if (!checkError && checkData) {
+        const conflict = checkData.some((b) => {
+          const booked = b.time_slot?.split(",").map((s: string) => s.trim()) || [];
+          return booked.some((slot: string) => selectedTimes.includes(slot));
+        });
+
+        if (conflict) {
+          setIsSubmitting(false);
+          fetchBookingStatus(); 
+          return alert("⚠️ ขออภัยครับ บางช่วงเวลาที่คุณเลือกเพิ่งถูกผู้อื่นจองไปเมื่อสักครู่นี้ กรุณาเลือกเวลาใหม่ครับ");
+        }
+      }
+
       const sortedTimes = [...selectedTimes].sort(
         (a, b) => TIME_SLOTS.indexOf(a) - TIME_SLOTS.indexOf(b),
       );
@@ -136,7 +164,7 @@ export default function BookingPage() {
         user_name: user.email,
         car_id: form.car_id,
         driver_name: form.driver_name,
-        date: date?.toLocaleDateString("sv-SE"),
+        date: formattedDate,
         time_slot: combinedSlot,
         destination: form.destination,
         reason: form.reason,
@@ -145,7 +173,6 @@ export default function BookingPage() {
       if (error) {
         console.error(error);
       } else {
-        // Line Notify
         await fetch("/api/line/notify-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -153,12 +180,11 @@ export default function BookingPage() {
             driver_name: form.driver_name,
             destination: form.destination,
             time_slot: combinedSlot,
-            car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-            date: date?.toLocaleDateString("sv-SE"),
+            car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
+            date: formattedDate,
           }),
         });
 
-        // Telegram Notify
         await fetch("/api/telegram/notify-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,8 +193,8 @@ export default function BookingPage() {
             driver_name: form.driver_name,
             destination: form.destination,
             time_slot: combinedSlot,
-            car_plate: cars.find((c) => c.id == form.car_id)?.plate || "",
-            date: date?.toLocaleDateString("sv-SE"),
+            car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
+            date: formattedDate,
             reason: form.reason,
           }),
         });
@@ -186,7 +212,7 @@ export default function BookingPage() {
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 p-4 transition-colors duration-300">
+      <main className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 p-4">
         <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex flex-col items-center w-full max-w-sm text-center border dark:border-slate-700">
           <Clock className="w-12 h-12 text-blue-500 animate-pulse mb-4" />
           <p className="text-slate-600 dark:text-slate-300 font-medium text-lg">กำลังตรวจสอบสิทธิ์ผู้ใช้...</p>
@@ -196,7 +222,8 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 pb-12 transition-colors duration-300">
+    // ✨ แก้ไขสีพื้นหลังให้เป็นทึบเหมือนหน้าอื่น (ลบ /50 ออกจากฝั่ง dark)
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
       <Navbar />
       <main className="p-3 sm:p-6 max-w-3xl mx-auto mt-2 sm:mt-4">
         
@@ -210,13 +237,14 @@ export default function BookingPage() {
           </div>
         </div>
 
-        <Card className="border-none shadow-xl rounded-2xl bg-white dark:bg-slate-800 dark:border dark:border-slate-700 overflow-visible sm:overflow-hidden transition-colors duration-300">
-          <CardContent className="p-4 sm:p-6 md:p-8">
+        <Card className="border-none shadow-xl rounded-2xl bg-white dark:bg-slate-800 dark:border dark:border-slate-700 overflow-visible transition-colors duration-300">
+          <CardContent className="p-4 sm:p-6 md:p-8 overflow-visible">
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               
               {/* Row 1: วันที่ & เลือกรถ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                <div className="space-y-2">
+                
+                <div className="space-y-2 relative z-[60]">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">วันที่จอง</label>
                   <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -226,13 +254,13 @@ export default function BookingPage() {
                       selected={date}
                       onChange={setDate}
                       wrapperClassName="w-full" 
-                      className="w-full pl-10 pr-4 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white font-medium"
+                      className="w-full pl-10 pr-4 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white font-medium relative z-20"
                       dateFormat="dd/MM/yyyy"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 relative z-50">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">ทะเบียนรถ</label>
                   <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -257,7 +285,7 @@ export default function BookingPage() {
               </div>
 
               {/* ชื่อผู้ขับ */}
-              <div className="space-y-2">
+              <div className="space-y-2 relative z-40">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">ชื่อผู้ขับ</label>
                 <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -283,13 +311,13 @@ export default function BookingPage() {
                   </div>
 
                   {showDriverDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 py-1">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 py-1 transition-colors">
                       {pastDrivers
                         .filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase()))
                         .map((name, index) => (
                           <div
                             key={index}
-                            className="px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-none flex items-center gap-2"
+                            className="px-4 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700/50 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-none flex items-center gap-2"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               setForm({ ...form, driver_name: name });
@@ -302,7 +330,7 @@ export default function BookingPage() {
                       ))}
                       
                       {pastDrivers.filter((name) => name.toLowerCase().includes(form.driver_name.toLowerCase())).length === 0 && (
-                        <div className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/50 italic">
+                        <div className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2 bg-slate-50/50 dark:bg-slate-900/50 italic">
                             ✨ กดบันทึกเพื่อใช้ชื่อ "{form.driver_name}" เป็นชื่อใหม่
                         </div>
                       )}
@@ -318,7 +346,7 @@ export default function BookingPage() {
               </div>
 
               {/* เลือกช่วงเวลา */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-2 relative z-30">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex flex-wrap items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" /> 
                   เลือกช่วงเวลา 
@@ -355,7 +383,7 @@ export default function BookingPage() {
                         >
                           <span className="whitespace-nowrap">{slot}</span>
                           {isBooked ? (
-                            <span className="text-[10px] text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full mt-1 w-full text-center truncate">
+                            <span className="text-[10px] text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full mt-1 w-full text-center truncate border dark:border-red-800/50">
                               จองแล้ว: {bookingStatus[slot]}
                             </span>
                           ) : isSelected ? (
@@ -369,7 +397,7 @@ export default function BookingPage() {
               </div>
 
               {/* สถานที่ & เหตุผล */}
-              <div className="space-y-4 pt-2">
+              <div className="space-y-4 pt-2 relative z-20">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">สถานที่ไป</label>
                   <div className="relative w-full">
@@ -405,7 +433,7 @@ export default function BookingPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 space-y-3">
+              <div className="pt-4 space-y-3 relative z-10">
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-14 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-lg rounded-xl transition-all active:scale-[0.98]"

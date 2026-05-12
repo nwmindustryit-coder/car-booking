@@ -11,6 +11,7 @@ export default function AdminCarMaintenance() {
   const [cars, setCars] = useState<any[]>([]);
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [mileageLog, setMileageLog] = useState<any[]>([]);
+  const [latestUserMiles, setLatestUserMiles] = useState<Record<number, number>>({}); // ✨ เก็บเลขไมล์สูงสุดจาก User
   const [loading, setLoading] = useState(true);
 
   // 🌙 State สำหรับ Dark Mode
@@ -45,9 +46,28 @@ export default function AdminCarMaintenance() {
       const { data: maintData } = await supabase.from("car_maintenance").select("*");
       const { data: logData } = await supabase.from("car_mileage_log").select("*");
 
+      // ✨ ดึงข้อมูลเลขไมล์สิ้นสุด (end_mile) ล่าสุดจากตารางที่ User กรอก
+      const { data: milesData } = await supabase
+        .from("miles")
+        .select("end_mile, bookings!inner(car_id)");
+
+      const maxMilesMap: Record<number, number> = {};
+      if (milesData) {
+        milesData.forEach((m: any) => {
+          const carId = m.bookings?.car_id;
+          if (carId && m.end_mile) {
+            // หาเลขไมล์ที่เยอะที่สุดของรถแต่ละคัน
+            if (!maxMilesMap[carId] || m.end_mile > maxMilesMap[carId]) {
+              maxMilesMap[carId] = m.end_mile;
+            }
+          }
+        });
+      }
+
       setCars(carsData || []);
       setMaintenance(maintData || []);
       setMileageLog(logData || []);
+      setLatestUserMiles(maxMilesMap); // เซฟลง State
       setLoading(false);
     };
     load();
@@ -55,7 +75,6 @@ export default function AdminCarMaintenance() {
 
   // ✅ ฟังก์ชันบันทึกข้อมูลเข้าศูนย์ (และแก้อาการ Error ข้อมูลวันที่ว่าง)
   const saveMaintenance = async (car_id: number, fields: any) => {
-    // กรองค่าที่เป็น String ว่าง "" ให้กลายเป็น null ก่อนบันทึก
     const cleanedFields = { ...fields };
     Object.keys(cleanedFields).forEach((key) => {
       if (cleanedFields[key] === "") {
@@ -82,7 +101,6 @@ export default function AdminCarMaintenance() {
 
   // ✅ ฟังก์ชันบันทึกวันหมดอายุเอกสาร (แก้อาการ Error ข้อมูลวันที่ว่าง)
   const updateCarDocument = async (id: number, fields: any) => {
-    // กรองค่าที่เป็น String ว่าง "" ให้กลายเป็น null ก่อนบันทึก
     const cleanedFields = { ...fields };
     Object.keys(cleanedFields).forEach((key) => {
       if (cleanedFields[key] === "") {
@@ -132,7 +150,7 @@ export default function AdminCarMaintenance() {
   }
 
   const ALERT_MILEAGE_OPTIONS = [500, 800, 1000, 1200, 1500, 2000];
-  const ALERT_DAYS_OPTIONS = [7, 15, 30, 45, 60, 90]; // ตัวเลือกแจ้งเตือนล่วงหน้า (วัน)
+  const ALERT_DAYS_OPTIONS = [7, 15, 30, 45, 60, 90]; 
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
@@ -169,12 +187,14 @@ export default function AdminCarMaintenance() {
           const m = maintenance.find((x) => x.car_id === car.id) || {};
           const log = mileageLog.find((x) => x.car_id === car.id) || {};
           
-          const current = log.current_mileage ?? 0;
+          // ✨ ดึงเลขไมล์ User กับแอดมินมาชนกัน เอาค่าที่เยอะที่สุดเป็นค่าตั้งต้น
+          const userMile = latestUserMiles[car.id] || 0;
+          const adminMile = log.current_mileage || 0;
+          const current = Math.max(userMile, adminMile); 
+
           const next = m.next_service_mileage ?? 0;
           const alert_before_mileage = m.alert_before_mileage ?? 1000;
           const remaining = next - current;
-
-          // ค่าเริ่มต้นการแจ้งเตือนเอกสารคือ 30 วัน ถ้าไม่ได้ตั้งค่าไว้
           const alert_before_days = car.alert_before_days ?? 30;
 
           return (
@@ -194,7 +214,10 @@ export default function AdminCarMaintenance() {
                     <Gauge className="w-4 h-4 text-blue-600 dark:text-blue-400" /> ข้อมูลระยะทาง
                   </h3>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">ไมล์ปัจจุบัน</label>
+                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 flex justify-between">
+                      ไมล์ปัจจุบัน
+                      {userMile > adminMile && <span className="text-[10px] text-blue-500 font-bold bg-blue-50 dark:bg-blue-900/30 px-1.5 rounded-sm">อัปเดตจาก User</span>}
+                    </label>
                     <input
                       type="number"
                       defaultValue={current}
@@ -261,7 +284,6 @@ export default function AdminCarMaintenance() {
                     </div>
                   </h3>
                   
-                  {/* เพิ่มตัวเลือกตั้งค่าการแจ้งเตือนเอกสารล่วงหน้า */}
                   <div className="pb-3 border-b border-slate-200 dark:border-slate-700/50">
                     <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">แจ้งเตือนเอกสารล่วงหน้า</label>
                     <div className="relative">
