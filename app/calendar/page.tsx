@@ -135,23 +135,20 @@ export default function FleetCalendar() {
   };
 
   // 🛰️ โหลดข้อมูล (แก้บั๊กกันค้างแบบ Bulletproof)
-  // ใช้แค่ค่า เดือน และ ปี เป็น dependency ป้องกัน React State Loop 100%
   const monthIndex = currentMonth.getMonth();
   const yearIndex = currentMonth.getFullYear();
 
   useEffect(() => {
-    let isMounted = true; // ป้องกัน State Update ถ้า Component ถูกปิดไปแล้ว
+    let isMounted = true; 
 
     const loadData = async () => {
       try {
         setLoading(true);
         setErrorMsg(null);
         
-        // หาวันที่เริ่มต้นและสิ้นสุดของหน้าปฏิทินนี้
         const start = format(startOfWeek(startOfMonth(currentMonth)), "yyyy-MM-dd");
         const end = format(endOfWeek(endOfMonth(currentMonth)), "yyyy-MM-dd");
 
-        // ✨ ใช้ Promise.all ดึง 2 ตารางพร้อมกันแบบขนาน (เร็วขึ้น 2 เท่า)
         const [carsRes, bookingsRes] = await Promise.all([
           supabase.from("cars").select("id, plate, brand").order("id"),
           supabase.from("bookings").select("*").gte("date", start).lte("date", end)
@@ -163,7 +160,6 @@ export default function FleetCalendar() {
         if (isMounted) {
           setCars(carsRes.data || []);
           
-          // จับคู่ข้อมูลรถ (Cars) เข้าไปใน Bookings (ทดแทนการ Join เพื่อลด Error)
           const mergedBookings = (bookingsRes.data || []).map((b: any) => {
              const carDetails = (carsRes.data || []).find((c: any) => c.id === b.car_id);
              return { ...b, cars: carDetails || { plate: "ไม่ทราบทะเบียน" } };
@@ -176,7 +172,7 @@ export default function FleetCalendar() {
         if (isMounted) setErrorMsg(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
       } finally {
         if (isMounted) {
-          setLoading(false); // บังคับให้โหลดเสร็จเสมอ ไม่ว่าจะพังหรือไม่ก็ตาม
+          setLoading(false);
         }
       }
     };
@@ -186,7 +182,7 @@ export default function FleetCalendar() {
     return () => {
       isMounted = false;
     };
-  }, [monthIndex, yearIndex]); // ล็อก Dependency สกัด Loop
+  }, [monthIndex, yearIndex]); 
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth));
@@ -206,7 +202,7 @@ export default function FleetCalendar() {
   const uniqueDrivers = new Set(totalThisMonth.map(b => b.driver_name)).size;
   const uniqueDays = new Set(totalThisMonth.map(b => b.date)).size;
 
-  // ✨ หน้า Loading ที่ชัวร์ที่สุด
+  // ✨ หน้า Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-12 flex flex-col">
@@ -222,7 +218,7 @@ export default function FleetCalendar() {
     );
   }
 
-  // ✨ หน้าโชว์ Error ถ้าดึง Database ไม่ได้
+  // ✨ หน้าโชว์ Error
   if (errorMsg) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-12 flex flex-col">
@@ -240,10 +236,19 @@ export default function FleetCalendar() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
+    // 🔴 แก้จุดที่ 1: เพิ่ม overflow-x-hidden และ w-full เพื่อกัน Scrollbar แนวนอน
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
       <Navbar />
 
       <style dangerouslySetInnerHTML={{ __html: `
+        /* 🔴 แก้จุดที่ 2: ล็อก Scrollbar Layout Shift ไม่ให้หน้ากระตุกเวลาเปิด Modal */
+        html {
+          scrollbar-gutter: stable;
+        }
+        body[data-scroll-locked] {
+          padding-right: 0 !important;
+          margin-right: 0 !important;
+        }
         .dark [role="dialog"] > button {
           color: #ffffff !important;
           background-color: #334155 !important;
@@ -267,6 +272,20 @@ export default function FleetCalendar() {
         .hide-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        /* 🔴 แก้จุดที่ 3: ทำให้ .custom-scrollbar เล็กและสวยงามขึ้น ป้องกัน Scrollbar เดิมที่หนาเตอะ */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #475569;
         }
       `}} />
 
@@ -485,7 +504,7 @@ export default function FleetCalendar() {
               วันที่ {selectedDateData && format(selectedDateData.date, "d MMMM yyyy", { locale: th })}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto pr-1 space-y-3 pt-4 custom-scrollbar">
+          <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-3 pt-4 custom-scrollbar">
             {selectedDateData?.bookings.map((b, i) => {
                const carIdx = cars.findIndex(c => c.id === b.car_id);
                const ramp = CAR_COLORS[carIdx % CAR_COLORS.length] || CAR_COLORS[0];
