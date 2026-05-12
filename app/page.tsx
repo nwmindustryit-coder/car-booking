@@ -912,7 +912,7 @@ export default function Dashboard() {
               </div>
               <Button
                 onClick={() => (location.href = "/booking")}
-                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 w-full sm:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:text-white dark:hover:bg-blue-600 w-full sm:w-auto"
               >
                 + จองรถ
               </Button>
