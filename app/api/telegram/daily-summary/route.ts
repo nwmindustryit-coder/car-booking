@@ -34,7 +34,16 @@ export async function GET(req: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const today = new Date().toLocaleDateString('sv-SE')
+    // วันที่สำหรับ Query Database
+    const todayDB = new Date().toLocaleDateString('sv-SE')
+    
+    // ✨ แปลงวันที่เป็นภาษาไทยให้ดูพรีเมียมสำหรับแสดงผลในแชท
+    const todayThai = new Date().toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    });
 
     // ✅ อัปเกรดการดึงข้อมูล: ดึงมาให้ครบทุกฟิลด์ และเรียงตามเวลาที่จอง
     const { data: bookings, error } = await supabase
@@ -49,7 +58,7 @@ export async function GET(req: Request) {
         created_at,
         cars(plate)
       `)
-      .eq('date', today)
+      .eq('date', todayDB)
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -57,28 +66,31 @@ export async function GET(req: Request) {
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
     const CHAT_ID = process.env.TELEGRAM_CHAT_ID
 
-    // ✨ จัดรูปแบบข้อความแบบ Premium
-    let message = `🌅 <b>สรุปคิวรถประจำวันที่ ${today}</b>\n`;
+    // ✨ จัดรูปแบบข้อความแบบ Premium (ใช้ Blockquote เพื่อให้ดูเป็นการ์ดเหมือน LINE Flex)
+    let message = `📣 <b>สรุปคิวรถส่วนกลางประจำวัน</b>\n📅 <i>${todayThai}</i>\n\n`;
     
     if (!bookings || bookings.length === 0) {
-      message += `━━━━━━━━━━━━━━━━━━━━\n✨ <i>วันนี้ยังไม่มีรายการจองรถครับ</i>\n━━━━━━━━━━━━━━━━━━━━`;
+      message += `✨ <i>วันนี้ยังไม่มีรายการจองรถครับ</i>\n\n`;
     } else {
-      message += `📊 <b>จำนวนคิวทั้งหมด:</b> <code>${bookings.length}</code> รายการ\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+      message += `📊 <b>จำนวนคิวทั้งหมด:</b> ${bookings.length} รายการ\n━━━━━━━━━━━━━━━━━━━\n\n`;
       
       bookings.forEach((b: any, index: number) => {
         const mergedTime = formatMergedTime(b.time_slot);
+        const plate = b.cars?.plate || 'ไม่ระบุ';
         
-        message += `🚗 <b>คิวที่ ${index + 1} | 🔖 ทะเบียน:</b> <code>${b.cars?.plate || 'ไม่ระบุ'}</code>
-👨‍✈️ <b>ผู้ขับ:</b> <code>${b.driver_name}</code>
-⏰ <b>เวลาใช้งาน:</b> <code>${mergedTime}</code>
-📍 <b>ปลายทาง:</b> <code>${b.destination}</code>
-📝 <b>เหตุผล:</b> <i>${b.reason || '-'}</i>
-👤 <b>ผู้ทำรายการจอง:</b> ${b.user_name?.split('@')[0] || '-'}
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
+        // ใช้ <blockquote> เพื่อสร้างแถบสีด้านซ้าย คล้ายๆ กล่องข้อความ
+        message += `🚗 <b>[คิวที่ ${index + 1}] ทะเบียน: ${plate}</b>\n`;
+        message += `<blockquote>`;
+        message += `👨‍✈️ <b>ผู้ขับ:</b> ${b.driver_name}\n`;
+        message += `⏰ <b>เวลา:</b> ${mergedTime}\n`;
+        message += `📍 <b>ปลายทาง:</b> ${b.destination}\n`;
+        message += `📝 <b>เหตุผล:</b> ${b.reason || '-'}\n`;
+        message += `👤 <b>ผู้จอง:</b> ${b.user_name?.split('@')[0] || '-'}`;
+        message += `</blockquote>\n\n`;
       });
     }
 
-    message += `\n🏢 <i>Nawamit Industry Co., Ltd.</i>`;
+    message += `🏢 <i>Nawamit Industry Co., Ltd.</i>`;
 
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
@@ -86,7 +98,7 @@ export async function GET(req: Request) {
       body: JSON.stringify({
         chat_id: CHAT_ID,
         text: message,
-        parse_mode: 'HTML'
+        parse_mode: 'HTML' // บังคับใช้ HTML Mode เสมอ
       })
     })
 

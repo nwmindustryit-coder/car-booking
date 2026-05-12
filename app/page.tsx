@@ -668,24 +668,54 @@ export default function Dashboard() {
 
       <style jsx>{`
         @keyframes slideInDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+          from {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
         }
         @keyframes fadeOut {
-          from { opacity: 1; transform: scale(1); }
-          to { opacity: 0; transform: scale(0.95); }
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: scale(0.95);
+          }
         }
         @keyframes pulseGlow {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.1); }
+          0%,
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.8;
+            transform: scale(1.1);
+          }
         }
         @keyframes ringPulse {
-          0%, 100% { stroke-dasharray: 0 100; opacity: 0.6; }
-          50% { stroke-dasharray: 50 100; opacity: 1; }
+          0%,
+          100% {
+            stroke-dasharray: 0 100;
+            opacity: 0.6;
+          }
+          50% {
+            stroke-dasharray: 50 100;
+            opacity: 1;
+          }
         }
         @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
         }
 
         .alert-container {
@@ -986,16 +1016,19 @@ export default function Dashboard() {
 
                 const canManageDay =
                   isAdmin || group.some((b) => b.user_id === user.id);
-                
+
                 // 🌙 ✨ แก้ไขจุดนี้: ปรับสีแถบวันที่ให้สว่างขึ้นใน Dark Mode เพื่อให้ Contrast ชัดเจน ตัดกับพื้นหลัง slate-800
                 const bgColor = isToday(d)
                   ? "bg-green-600 dark:bg-emerald-600" // สีเขียวสว่างสำหรับวันนี้
                   : isEvenMonth
-                    ? "bg-gray-700 dark:bg-slate-600"  // ปรับให้สว่างขึ้นเป็น slate-600
+                    ? "bg-gray-700 dark:bg-slate-600" // ปรับให้สว่างขึ้นเป็น slate-600
                     : "bg-gray-600 dark:bg-slate-500"; // ปรับให้สว่างขึ้นเป็น slate-500
 
                 return (
-                  <div key={date} className="border-b dark:border-slate-700 last:border-none">
+                  <div
+                    key={date}
+                    className="border-b dark:border-slate-700 last:border-none"
+                  >
                     <div
                       className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor} transition-colors`}
                     >
@@ -1013,16 +1046,24 @@ export default function Dashboard() {
                     {/* ============================================================== */}
                     <div className="block lg:hidden bg-slate-50/50 dark:bg-slate-900/50 p-2 space-y-3 transition-colors">
                       {group.map((b: any) => (
-                        <div key={b.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
-                          <div className={`absolute top-0 left-0 w-1 h-full ${b.miles_status === "recorded" ? "bg-emerald-500" : "bg-amber-500"}`}></div>
-                          
+                        <div
+                          key={b.id}
+                          className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors"
+                        >
+                          <div
+                            className={`absolute top-0 left-0 w-1 h-full ${b.miles_status === "recorded" ? "bg-emerald-500" : "bg-amber-500"}`}
+                          ></div>
+
                           <div className="pl-2">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex items-center gap-2 text-slate-800 dark:text-white font-bold text-base">
                                 <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                                 {b.driver_name}
                               </div>
-                              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 shadow-sm">
+                              <Badge
+                                variant="outline"
+                                className="bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 shadow-sm"
+                              >
                                 {b.cars?.plate}
                               </Badge>
                             </div>
@@ -1034,7 +1075,9 @@ export default function Dashboard() {
                               </div>
                               <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200 font-medium">
                                 <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                                <span className="line-clamp-2">{b.destination}</span>
+                                <span className="line-clamp-2">
+                                  {b.destination}
+                                </span>
                               </div>
                               {b.reason && (
                                 <div className="pl-6 text-xs text-slate-400 dark:text-slate-500">
@@ -1044,7 +1087,6 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-700 gap-3">
-                              
                               <div className="w-full sm:w-auto flex justify-center sm:justify-start">
                                 {b.miles_status === "recorded" ? (
                                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-emerald-800/50">
@@ -1059,63 +1101,87 @@ export default function Dashboard() {
 
                               <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
                                 <Button
-                                  size="sm" variant="outline"
+                                  size="sm"
+                                  variant="outline"
                                   className="h-9 px-3 rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm"
                                   onClick={async () => {
-                                    const { data: milesData } = await supabase.from("miles").select("start_mile, end_mile, total_mile").eq("booking_id", b.id).limit(1).maybeSingle();
-                                    setShowDetail({ ...b, miles: milesData || null });
+                                    const { data: milesData } = await supabase
+                                      .from("miles")
+                                      .select(
+                                        "start_mile, end_mile, total_mile",
+                                      )
+                                      .eq("booking_id", b.id)
+                                      .limit(1)
+                                      .maybeSingle();
+                                    setShowDetail({
+                                      ...b,
+                                      miles: milesData || null,
+                                    });
                                   }}
                                 >
                                   <EyeIcon className="w-4 h-4" />
                                 </Button>
-                                
+
                                 {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในมือถือ ✨ */}
                                 <Button
                                   size="sm"
                                   disabled={b.miles_status === "recorded"}
                                   onClick={() => setSelectedBooking(b)}
                                   className={`h-9 px-3 rounded-lg shadow-sm ${
-                                    b.miles_status === "recorded" 
-                                      ? "bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 opacity-80" 
+                                    b.miles_status === "recorded"
+                                      ? "bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 opacity-80"
                                       : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                                   }`}
                                 >
                                   <GaugeIcon className="w-4 h-4 mr-1" /> ไมล์
                                 </Button>
 
-                                {canManageDay && (b.user_id === user.id || isAdmin) && (
-                                  <>
-                                    <Button
-                                      size="sm" variant="ghost"
-                                      className="h-9 px-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg ml-1"
-                                      onClick={() => {
-                                        setEditForm({ driver_name: b.driver_name, destination: b.destination, reason: b.reason, date: new Date(b.date) });
-                                        setSelectedEditTimes(b.time_slot.split(",").map((s: string) => s.trim()));
-                                        setEditBooking(b);
-                                      }}
-                                    >
-                                      <SquarePen className="w-4 h-4" />
-                                    </Button>
-                                    
-                                    {isAdmin && (
+                                {canManageDay &&
+                                  (b.user_id === user.id || isAdmin) && (
+                                    <>
                                       <Button
-                                        size="sm" variant="ghost"
-                                        className="h-9 px-2 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg"
-                                        onClick={() => setSwapBooking(b)}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-9 px-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg ml-1"
+                                        onClick={() => {
+                                          setEditForm({
+                                            driver_name: b.driver_name,
+                                            destination: b.destination,
+                                            reason: b.reason,
+                                            date: new Date(b.date),
+                                          });
+                                          setSelectedEditTimes(
+                                            b.time_slot
+                                              .split(",")
+                                              .map((s: string) => s.trim()),
+                                          );
+                                          setEditBooking(b);
+                                        }}
                                       >
-                                        <ArrowRightLeft className="w-4 h-4" />
+                                        <SquarePen className="w-4 h-4" />
                                       </Button>
-                                    )}
 
-                                    <Button
-                                      size="sm" variant="ghost"
-                                      className="h-9 px-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg"
-                                      onClick={() => handleDeleteBooking(b)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
+                                      {isAdmin && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-9 px-2 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg"
+                                          onClick={() => setSwapBooking(b)}
+                                        >
+                                          <ArrowRightLeft className="w-4 h-4" />
+                                        </Button>
+                                      )}
+
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-9 px-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg"
+                                        onClick={() => handleDeleteBooking(b)}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </>
+                                  )}
                               </div>
                             </div>
                           </div>
@@ -1155,7 +1221,10 @@ export default function Dashboard() {
                                 {b.driver_name}
                               </td>
                               <td className="p-2 sm:p-3 text-center">
-                                <Badge variant="outline" className="bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
+                                >
                                   {b.cars?.plate}
                                 </Badge>
                               </td>
@@ -1292,7 +1361,9 @@ export default function Dashboard() {
           <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
             <DialogContent className="w-[95vw] sm:max-w-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
               <DialogHeader>
-                <DialogTitle className="dark:text-white">รายละเอียดการจอง</DialogTitle>
+                <DialogTitle className="dark:text-white">
+                  รายละเอียดการจอง
+                </DialogTitle>
               </DialogHeader>
               {showDetail && (
                 <div className="space-y-2 text-sm">
@@ -1352,20 +1423,32 @@ export default function Dashboard() {
             <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl dark:bg-slate-800 dark:border-slate-700">
               <DialogHeader>
                 <DialogTitle className="text-xl text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <GaugeIcon className="w-5 h-5"/>
+                  <GaugeIcon className="w-5 h-5" />
                   บันทึกเลขไมล์
                 </DialogTitle>
               </DialogHeader>
               {selectedBooking && (
                 <div className="space-y-4 pt-2">
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm">
-                    <p className="dark:text-slate-300">รถทะเบียน: <b className="text-blue-600 dark:text-blue-400">{selectedBooking.cars?.plate}</b></p>
-                    <p className="dark:text-slate-300">ผู้ขับ: <b className="text-slate-700 dark:text-slate-200">{selectedBooking.driver_name}</b></p>
+                    <p className="dark:text-slate-300">
+                      รถทะเบียน:{" "}
+                      <b className="text-blue-600 dark:text-blue-400">
+                        {selectedBooking.cars?.plate}
+                      </b>
+                    </p>
+                    <p className="dark:text-slate-300">
+                      ผู้ขับ:{" "}
+                      <b className="text-slate-700 dark:text-slate-200">
+                        {selectedBooking.driver_name}
+                      </b>
+                    </p>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">เลขไมล์เริ่มต้น</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                        เลขไมล์เริ่มต้น
+                      </label>
                       <Input
                         type="number"
                         className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
@@ -1375,7 +1458,9 @@ export default function Dashboard() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">เลขไมล์สิ้นสุด</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                        เลขไมล์สิ้นสุด
+                      </label>
                       <Input
                         type="number"
                         className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
@@ -1387,14 +1472,23 @@ export default function Dashboard() {
                   </div>
 
                   {usedMile !== null && (
-                    <div className={`p-3 rounded-xl border text-center ${usedMile < 0 ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'}`}>
-                      <p className={`text-sm ${usedMile < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                        ระยะทางที่ขับขี่รวม: <span className="text-xl font-bold">{usedMile}</span> กม.
+                    <div
+                      className={`p-3 rounded-xl border text-center ${usedMile < 0 ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800"}`}
+                    >
+                      <p
+                        className={`text-sm ${usedMile < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
+                      >
+                        ระยะทางที่ขับขี่รวม:{" "}
+                        <span className="text-xl font-bold">{usedMile}</span>{" "}
+                        กม.
                       </p>
                     </div>
                   )}
 
-                  <Button className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white" onClick={handleSaveMiles}>
+                  <Button
+                    className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white"
+                    onClick={handleSaveMiles}
+                  >
                     💾 ยืนยันการบันทึก
                   </Button>
                 </div>
@@ -1407,12 +1501,14 @@ export default function Dashboard() {
             open={!!editBooking}
             onOpenChange={() => setEditBooking(null)}
           >
-            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
+            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 transition-colors">
               <DialogHeader>
-                <DialogTitle className="dark:text-white">
+                <DialogTitle className="dark:text-white flex items-center">
                   แก้ไขการจอง{" "}
                   {isAdmin && (
-                    <Badge className="ml-2 bg-indigo-600">Admin Mode</Badge>
+                    <Badge className="ml-2 bg-indigo-600 dark:bg-indigo-500">
+                      Admin Mode
+                    </Badge>
                   )}
                 </DialogTitle>
               </DialogHeader>
@@ -1498,6 +1594,11 @@ export default function Dashboard() {
                         date: editForm.date.toLocaleDateString("sv-SE"),
                         car_plate: editBooking.cars?.plate || "",
                         reason: editForm.reason,
+                        old_driver_name: editBooking.driver_name,
+                        old_destination: editBooking.destination,
+                        old_time_slot: editBooking.time_slot,
+                        old_date: editBooking.date,
+                        old_reason: editBooking.reason,
                       }),
                     });
 
@@ -1512,6 +1613,11 @@ export default function Dashboard() {
                         date: editForm.date.toLocaleDateString("sv-SE"),
                         car_plate: editBooking.cars?.plate || "",
                         reason: editForm.reason,
+                        old_driver_name: editBooking.driver_name,
+                        old_destination: editBooking.destination,
+                        old_time_slot: editBooking.time_slot,
+                        old_date: editBooking.date,
+                        old_reason: editBooking.reason,
                       }),
                     });
 
@@ -1519,117 +1625,150 @@ export default function Dashboard() {
                     setEditBooking(null);
                     loadBookings();
                   }}
-                  className="space-y-3"
+                  className="space-y-3 pt-2"
                 >
-                  <label className="block text-sm font-medium">
-                    ชื่อผู้ขับ
-                  </label>
-                  <Input
-                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                    value={editForm.driver_name}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, driver_name: e.target.value })
-                    }
-                  />
-
-                  <label className="block text-sm font-medium">สถานที่</label>
-                  <Input
-                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                    value={editForm.destination}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, destination: e.target.value })
-                    }
-                  />
-
-                  <label className="block text-sm font-medium">เหตุผล</label>
-                  <Input
-                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                    value={editForm.reason}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, reason: e.target.value })
-                    }
-                  />
-
-                  <div className="border-t dark:border-slate-700 pt-3">
-                    <label className="block text-sm font-medium">
-                      เลขไมล์เริ่มต้น
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium dark:text-slate-300">
+                      ชื่อผู้ขับ
                     </label>
                     <Input
-                      type="number"
-                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                      value={editStartMile}
-                      onChange={(e) => setEditStartMile(e.target.value)}
-                    />
-                    <label className="block text-sm font-medium mt-2">
-                      เลขไมล์สิ้นสุด
-                    </label>
-                    <Input
-                      type="number"
-                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                      value={editEndMile}
-                      onChange={(e) => setEditEndMile(e.target.value)}
+                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                      value={editForm.driver_name}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          driver_name: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
-                  <label className="block text-sm font-medium">วันที่</label>
-                  <DatePicker
-                    selected={editForm.date}
-                    onChange={(d: Date | null) =>
-                      d && setEditForm({ ...editForm, date: d })
-                    }
-                    dateFormat="dd/MM/yyyy"
-                    className="border rounded-md p-2 w-full dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium dark:text-slate-300">
+                      สถานที่
+                    </label>
+                    <Input
+                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                      value={editForm.destination}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          destination: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
 
-                  <label className="block text-sm font-medium">
-                    ช่วงเวลาที่ต้องการแก้ไข
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {TIME_SLOTS.map((slot) => {
-                      const isBooked =
-                        editBookingStatus[slot] &&
-                        editBookingStatus[slot] !== "ว่าง";
-                      const bookedBy = editBookingStatus[slot];
-                      const isSelected = selectedEditTimes.includes(slot);
-                      return (
-                        <Button
-                          key={slot}
-                          type="button"
-                          variant={isSelected ? "default" : "outline"}
-                          onClick={() => {
-                            if (
-                              !isBooked ||
-                              bookedBy === editForm.driver_name
-                            ) {
-                              setSelectedEditTimes((prev) =>
-                                prev.includes(slot)
-                                  ? prev.filter((s) => s !== slot)
-                                  : [...prev, slot],
-                              );
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium dark:text-slate-300">
+                      เหตุผล
+                    </label>
+                    <Input
+                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                      value={editForm.reason}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, reason: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="border-t dark:border-slate-700 pt-3 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium dark:text-slate-300">
+                        เลขไมล์เริ่มต้น
+                      </label>
+                      <Input
+                        type="number"
+                        className="font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                        value={editStartMile}
+                        onChange={(e) => setEditStartMile(e.target.value)}
+                        placeholder="เลขไมล์เริ่มต้น"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium dark:text-slate-300">
+                        เลขไมล์สิ้นสุด
+                      </label>
+                      <Input
+                        type="number"
+                        className="font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                        value={editEndMile}
+                        onChange={(e) => setEditEndMile(e.target.value)}
+                        placeholder="เลขไมล์สิ้นสุด"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium dark:text-slate-300">
+                      วันที่
+                    </label>
+                    <DatePicker
+                      selected={editForm.date}
+                      onChange={(d: Date | null) =>
+                        d && setEditForm({ ...editForm, date: d })
+                      }
+                      dateFormat="dd/MM/yyyy"
+                      className="border border-slate-200 dark:border-slate-600 rounded-md p-2 w-full bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium dark:text-slate-300">
+                      ช่วงเวลาที่ต้องการแก้ไข
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {TIME_SLOTS.map((slot) => {
+                        const isBooked =
+                          editBookingStatus[slot] &&
+                          editBookingStatus[slot] !== "ว่าง";
+                        const bookedBy = editBookingStatus[slot];
+                        const isSelected = selectedEditTimes.includes(slot);
+                        return (
+                          <Button
+                            key={slot}
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => {
+                              if (
+                                !isBooked ||
+                                bookedBy === editForm.driver_name
+                              ) {
+                                setSelectedEditTimes((prev) =>
+                                  prev.includes(slot)
+                                    ? prev.filter((s) => s !== slot)
+                                    : [...prev, slot],
+                                );
+                              }
+                            }}
+                            disabled={
+                              isBooked && bookedBy !== editForm.driver_name
                             }
-                          }}
-                          disabled={
-                            isBooked && bookedBy !== editForm.driver_name
-                          }
-                          className={`flex items-center justify-center gap-1 ${
-                            isSelected ? "" : "dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600"
-                          }`}
-                        >
-                          {slot}
-                          {isBooked ? (
-                            <Badge className="ml-1 bg-red-500">
-                              {bookedBy}
-                            </Badge>
-                          ) : (
-                            <Badge className="ml-1 bg-green-500">ว่าง</Badge>
-                          )}
-                        </Button>
-                      );
-                    })}
+                            className={`flex items-center justify-center gap-1 text-xs sm:text-sm ${
+                              isSelected
+                                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:bg-blue-500"
+                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+                            }`}
+                          >
+                            <span className="truncate">{slot}</span>
+                            {isBooked ? (
+                              <Badge className="ml-1 bg-red-500 dark:bg-red-900/80 text-white">
+                                {bookedBy}
+                              </Badge>
+                            ) : (
+                              <Badge className="ml-1 bg-emerald-500 dark:bg-emerald-900/80 text-white">
+                                ว่าง
+                              </Badge>
+                            )}
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
+
                   <Button
                     type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white mt-4"
                   >
                     💾 บันทึกการแก้ไข
                   </Button>
@@ -1659,19 +1798,31 @@ export default function Dashboard() {
                 <div className="space-y-4 pt-4">
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm space-y-1">
                     <p>
-                      <span className="text-slate-500 dark:text-slate-400">ผู้ขับ:</span>{" "}
-                      <b className="dark:text-white">{swapBooking.driver_name}</b>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        ผู้ขับ:
+                      </span>{" "}
+                      <b className="dark:text-white">
+                        {swapBooking.driver_name}
+                      </b>
                     </p>
                     <p>
-                      <span className="text-slate-500 dark:text-slate-400">วันที่:</span>{" "}
+                      <span className="text-slate-500 dark:text-slate-400">
+                        วันที่:
+                      </span>{" "}
                       <b className="dark:text-white">{swapBooking.date}</b>
                     </p>
                     <p>
-                      <span className="text-slate-500 dark:text-slate-400">ช่วงเวลา:</span>{" "}
-                      <b className="dark:text-white">{mergeTimeSlots(swapBooking.time_slot)}</b>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        ช่วงเวลา:
+                      </span>{" "}
+                      <b className="dark:text-white">
+                        {mergeTimeSlots(swapBooking.time_slot)}
+                      </b>
                     </p>
                     <p>
-                      <span className="text-slate-500 dark:text-slate-400">รถคันเดิม:</span>{" "}
+                      <span className="text-slate-500 dark:text-slate-400">
+                        รถคันเดิม:
+                      </span>{" "}
                       <Badge
                         variant="outline"
                         className="ml-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 dark:border-slate-600"
@@ -1710,7 +1861,10 @@ export default function Dashboard() {
                             ?.isBooked && (
                             <div className="p-3 mt-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 text-sm">
                               ⚠️ <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
-                              จะถูกย้ายมาขับรถ <b className="dark:text-white">{swapBooking.cars?.plate}</b>{" "}
+                              จะถูกย้ายมาขับรถ{" "}
+                              <b className="dark:text-white">
+                                {swapBooking.cars?.plate}
+                              </b>{" "}
                               แทนอัตโนมัติ
                             </div>
                           )}

@@ -36,29 +36,28 @@ export async function POST(req: Request) {
     // ดึงเฉพาะชื่อหน้า @ จากอีเมล (เช่น beam@nawamit.com -> beam)
     const requestor = user_name ? user_name.split('@')[0] : 'ไม่ระบุ';
     
-    // ดึงเวลาปัจจุบัน (เวลาที่กดจอง)
-    const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    // ✨ แปลงวันที่ที่ส่งมาให้เป็นภาษาไทยแบบสวยงาม
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    });
 
-    // ✨ จัดรูปแบบข้อความแบบ Premium เต็มสูบ
-    const message = `
-🆕 <b>แจ้งเตือน: มีรายการจองรถใหม่เข้าสู่ระบบ!</b>
-━━━━━━━━━━━━━━━━━━━━
-👤 <b>ผู้ทำรายการจอง:</b> <code>${requestor}</code>
-⏱️ <b>เวลาที่ทำรายการ:</b> <code>${timestamp}</code>
-━━━━━━━━━━━━━━━━━━━━
-🚘 <b>รถที่จอง (ทะเบียน):</b> <code>${car_plate}</code>
-👨‍✈️ <b>ผู้รับผิดชอบขับขี่:</b> <code>${driver_name}</code>
-📅 <b>วันที่ใช้งาน:</b> <code>${date}</code>
-⏰ <b>ช่วงเวลาที่ใช้:</b> <code>${mergedTime}</code>
-
-📍 <b>จุดหมายปลายทาง:</b>
-└ <code>${destination}</code>
-
-📝 <b>เหตุผล / รายละเอียด:</b>
-└ <i>${reason || 'ไม่มีการระบุ'}</i>
-━━━━━━━━━━━━━━━━━━━━
-✅ <i>ระบบบันทึกข้อมูลลงฐานข้อมูลเรียบร้อยแล้ว</i>
-🏢 <i>Nawamit Industry Co., Ltd.</i>`;
+    // ✨ จัดรูปแบบข้อความแบบ Premium เต็มสูบ โดยใช้ <blockquote>
+    let message = `🆕 <b>แจ้งเตือนจองรถใหม่!</b>\n`;
+    message += `📅 <i>${formattedDate}</i>\n\n`;
+    message += `<blockquote>`;
+    message += `🚗 <b>ทะเบียน:</b> ${car_plate}\n`;
+    message += `👨‍✈️ <b>ผู้ขับ:</b> ${driver_name}\n`;
+    message += `⏰ <b>เวลา:</b> ${mergedTime}\n`;
+    message += `📍 <b>ปลายทาง:</b> ${destination}\n`;
+    message += `📝 <b>เหตุผล:</b> ${reason || '-'}\n`;
+    message += `👤 <b>ผู้จอง:</b> ${requestor}`;
+    message += `</blockquote>\n\n`;
+    message += `✅ <i>บันทึกลงระบบเรียบร้อยแล้ว</i>\n`;
+    message += `🏢 <i>Nawamit Industry Co., Ltd.</i>`;
 
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
@@ -66,7 +65,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         chat_id: CHAT_ID,
         text: message,
-        parse_mode: 'HTML'
+        parse_mode: 'HTML' // บังคับใช้ HTML Mode เสมอ
       })
     })
 
