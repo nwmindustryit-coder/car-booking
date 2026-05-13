@@ -170,75 +170,109 @@ export default function Dashboard() {
     };
   }, []);
 
-  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี
+  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี (✨ ซิงค์สมองกับหน้า Admin แล้ว)
   useEffect(() => {
     const loadAlerts = async () => {
-      const { data: cars } = await supabase.from("cars").select("*");
-      const { data: maintenance } = await supabase
-        .from("car_maintenance")
-        .select("*");
-      const { data: log } = await supabase.from("car_mileage_log").select("*");
+      try {
+        const { data: cars } = await supabase.from("cars").select("*");
+        const { data: maintenance } = await supabase.from("car_maintenance").select("*");
+        const { data: log } = await supabase.from("car_mileage_log").select("*");
 
-      const result: any[] = [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+        // ✨ ดึงข้อมูลเลขไมล์จากที่ User กรอกตอนคืนรถมาด้วย! (เหมือนในหน้า Admin เป๊ะ)
+        const { data: milesData } = await supabase
+          .from("miles")
+          .select("end_mile, bookings!inner(car_id)");
 
-      cars?.forEach((car) => {
-        // 🔴 1. เช็กระยะไมล์เข้าศูนย์
-        const m = maintenance?.find((x) => x.car_id === car.id);
-        const mg = log?.find((x) => x.car_id === car.id);
-
-        if (m && mg) {
-          const remain = m.next_service_mileage - mg.current_mileage;
-          if (remain <= m.alert_before_mileage) {
-            result.push({
-              id: `${car.id}-maint`,
-              plate: car.plate,
-              title: "แจ้งเตือนเข้าศูนย์",
-              message:
-                remain <= 0
-                  ? "ถึงกำหนดเข้าศูนย์แล้ว!"
-                  : `เหลืออีก ${remain} กม. ถึงกำหนดเข้าศูนย์`,
-              type: "maintenance",
-            });
-          }
+        const maxMilesMap: Record<number, number> = {};
+        if (milesData) {
+          milesData.forEach((m: any) => {
+            const carId = m.bookings?.car_id;
+            if (carId && m.end_mile) {
+              if (!maxMilesMap[carId] || m.end_mile > maxMilesMap[carId]) {
+                maxMilesMap[carId] = m.end_mile;
+              }
+            }
+          });
         }
 
-        // 🔵 2. เช็กวันหมดอายุ ภาษี / พ.ร.บ. / ประกัน
-        const checkExpire = (
-          expireDate: string | null,
-          docName: string,
-          alertDays: number,
-        ) => {
-          if (!expireDate) return;
-          const exp = new Date(expireDate);
-          const diffTime = exp.getTime() - today.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const result: any[] = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-          if (diffDays <= alertDays) {
-            result.push({
-              id: `${car.id}-${docName}`,
-              plate: car.plate,
-              title: `แจ้งเตือนต่อ${docName}`,
-              message:
-                diffDays < 0
-                  ? `หมดอายุมาแล้ว ${Math.abs(diffDays)} วัน! ❌`
-                  : diffDays === 0
-                    ? "หมดอายุวันนี้! ⚠️"
-                    : `กำลังจะหมดอายุในอีก ${diffDays} วัน`,
-              type: "document",
-            });
+        cars?.forEach((car) => {
+          // 🔴 1. เช็กระยะไมล์เข้าศูนย์
+          const m = maintenance?.find((x) => x.car_id === car.id);
+          
+          const carLogs = log?.filter((x) => x.car_id === car.id) || [];
+          const adminLog = carLogs.sort((a, b) => Number(b.current_mileage) - Number(a.current_mileage))[0];
+          
+          const adminMile = adminLog ? Number(adminLog.current_mileage) : 0;
+          const userMile = maxMilesMap[car.id] || 0;
+          
+          // ✨ คำนวณหาไมล์ล่าสุดแบบเดียวกับหน้า Admin (เอาค่าที่เยอะที่สุด)
+          const currentMile = Math.max(userMile, adminMile);
+
+          if (m && m.next_service_mileage) {
+            const nextService = Number(m.next_service_mileage) || 0;
+            const alertLimit = Number(m.alert_before_mileage) || 1000;
+
+            const remain = nextService - currentMile;
+
+            if (remain <= alertLimit) {
+              result.push({
+                id: `${car.id}-maint`,
+                plate: car.plate,
+                title: "แจ้งเตือนเข้าศูนย์!",
+                message:
+                  remain < 0
+                    ? `เลยกำหนดเข้าศูนย์มาแล้ว ${Math.abs(remain).toLocaleString("th-TH")} กม. ❌`
+                    : remain === 0
+                      ? "ถึงกำหนดเข้าศูนย์พอดี! ⚠️"
+                      : `ระยะทางคงเหลือ: ${remain.toLocaleString("th-TH")} กม.`,
+                type: "maintenance",
+              });
+            }
           }
-        };
 
-        const alertDays = car.alert_before_days ?? 30;
+          // 🔵 2. เช็กวันหมดอายุ ภาษี / พ.ร.บ. / ประกัน
+          const checkExpire = (
+            expireDate: string | null,
+            docName: string,
+            alertDays: number,
+          ) => {
+            if (!expireDate) return;
+            const exp = new Date(expireDate);
+            if (isNaN(exp.getTime())) return;
+            const diffTime = exp.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        checkExpire(car.tax_expire, "ภาษี", alertDays);
-        checkExpire(car.act_expire, "พ.ร.บ.", alertDays);
-        checkExpire(car.insurance_expire, "ประกันภัย", alertDays);
-      });
+            if (diffDays <= alertDays) {
+              result.push({
+                id: `${car.id}-${docName}`,
+                plate: car.plate,
+                title: `แจ้งเตือนต่อ${docName}`,
+                message:
+                  diffDays < 0
+                    ? `หมดอายุมาแล้ว ${Math.abs(diffDays)} วัน! ❌`
+                    : diffDays === 0
+                      ? "หมดอายุวันนี้! ⚠️"
+                      : `กำลังจะหมดอายุในอีก ${diffDays} วัน`,
+                type: "document",
+              });
+            }
+          };
 
-      setAlerts(result);
+          const alertDays = Number(car.alert_before_days) || 30;
+
+          checkExpire(car.tax_expire, "ภาษี", alertDays);
+          checkExpire(car.act_expire, "พ.ร.บ.", alertDays);
+          checkExpire(car.insurance_expire, "ประกันภัย", alertDays);
+        });
+
+        setAlerts(result);
+      } catch (error) {
+        console.error("Error loading alerts:", error);
+      }
     };
 
     loadAlerts();
@@ -666,7 +700,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      <style jsx>{`
+      {/* ✨ เปลี่ยนจาก <style jsx> เป็น dangerouslySetInnerHTML เพื่อป้องกันบั๊กใน Next.js App Router */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slideInDown {
           from {
             transform: translateY(-100%);
@@ -846,7 +881,7 @@ export default function Dashboard() {
         .alert-close:active {
           transform: rotate(90deg) scale(0.95);
         }
-      `}</style>
+      `}} />
 
       <Navbar />
       <AnnouncementPopup />
@@ -1294,7 +1329,6 @@ export default function Dashboard() {
                                 </div>
                               </td>
 
-                              {/* ✨ แสดงปุ่มจัดการ */}
                               {canManageDay && (
                                 <td className="p-2 sm:p-3 text-center">
                                   {(b.user_id === user.id || isAdmin) && (
