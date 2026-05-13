@@ -170,15 +170,19 @@ export default function Dashboard() {
     };
   }, []);
 
-  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี (✨ ซิงค์สมองกับหน้า Admin แล้ว)
+  // 3. โหลดแจ้งเตือนการบำรุงรักษารถ & พ.ร.บ./ภาษี (✨ Wording ระดับ Premium)
   useEffect(() => {
     const loadAlerts = async () => {
       try {
         const { data: cars } = await supabase.from("cars").select("*");
-        const { data: maintenance } = await supabase.from("car_maintenance").select("*");
-        const { data: log } = await supabase.from("car_mileage_log").select("*");
+        const { data: maintenance } = await supabase
+          .from("car_maintenance")
+          .select("*");
+        const { data: log } = await supabase
+          .from("car_mileage_log")
+          .select("*");
 
-        // ✨ ดึงข้อมูลเลขไมล์จากที่ User กรอกตอนคืนรถมาด้วย! (เหมือนในหน้า Admin เป๊ะ)
+        // ✨ ดึงข้อมูลเลขไมล์จากที่ User กรอกตอนคืนรถมาด้วย
         const { data: milesData } = await supabase
           .from("miles")
           .select("end_mile, bookings!inner(car_id)");
@@ -202,14 +206,16 @@ export default function Dashboard() {
         cars?.forEach((car) => {
           // 🔴 1. เช็กระยะไมล์เข้าศูนย์
           const m = maintenance?.find((x) => x.car_id === car.id);
-          
+
           const carLogs = log?.filter((x) => x.car_id === car.id) || [];
-          const adminLog = carLogs.sort((a, b) => Number(b.current_mileage) - Number(a.current_mileage))[0];
-          
+          const adminLog = carLogs.sort(
+            (a, b) => Number(b.current_mileage) - Number(a.current_mileage),
+          )[0];
+
           const adminMile = adminLog ? Number(adminLog.current_mileage) : 0;
           const userMile = maxMilesMap[car.id] || 0;
-          
-          // ✨ คำนวณหาไมล์ล่าสุดแบบเดียวกับหน้า Admin (เอาค่าที่เยอะที่สุด)
+
+          // ✨ คำนวณหาไมล์ล่าสุด
           const currentMile = Math.max(userMile, adminMile);
 
           if (m && m.next_service_mileage) {
@@ -222,13 +228,13 @@ export default function Dashboard() {
               result.push({
                 id: `${car.id}-maint`,
                 plate: car.plate,
-                title: "แจ้งเตือนเข้าศูนย์!",
+                title: "แจ้งเตือนกำหนดการซ่อมบำรุง",
                 message:
                   remain < 0
-                    ? `เลยกำหนดเข้าศูนย์มาแล้ว ${Math.abs(remain).toLocaleString("th-TH")} กม. ❌`
+                    ? `เกินระยะที่กำหนดมาแล้ว ${Math.abs(remain).toLocaleString("th-TH")} กิโลเมตร`
                     : remain === 0
-                      ? "ถึงกำหนดเข้าศูนย์พอดี! ⚠️"
-                      : `ระยะทางคงเหลือ: ${remain.toLocaleString("th-TH")} กม.`,
+                      ? "รถยนต์ถึงระยะกำหนดเข้าซ่อมบำรุงแล้ว"
+                      : `ระยะทางคงเหลืออีก ${remain.toLocaleString("th-TH")} กิโลเมตร ก่อนถึงกำหนด`,
                 type: "maintenance",
               });
             }
@@ -250,13 +256,13 @@ export default function Dashboard() {
               result.push({
                 id: `${car.id}-${docName}`,
                 plate: car.plate,
-                title: `แจ้งเตือนต่อ${docName}`,
+                title: `แจ้งเตือนครบกำหนดต่ออายุ${docName}`,
                 message:
                   diffDays < 0
-                    ? `หมดอายุมาแล้ว ${Math.abs(diffDays)} วัน! ❌`
+                    ? `เอกสารเลยกำหนดต่ออายุมาแล้ว ${Math.abs(diffDays)} วัน`
                     : diffDays === 0
-                      ? "หมดอายุวันนี้! ⚠️"
-                      : `กำลังจะหมดอายุในอีก ${diffDays} วัน`,
+                      ? "เอกสารจะสิ้นสุดความคุ้มครองภายในวันนี้"
+                      : `เอกสารจะครบกำหนดต่ออายุในอีก ${diffDays} วัน`,
                 type: "document",
               });
             }
@@ -701,7 +707,9 @@ export default function Dashboard() {
       )}
 
       {/* ✨ เปลี่ยนจาก <style jsx> เป็น dangerouslySetInnerHTML เพื่อป้องกันบั๊กใน Next.js App Router */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes slideInDown {
           from {
             transform: translateY(-100%);
@@ -881,7 +889,9 @@ export default function Dashboard() {
         .alert-close:active {
           transform: rotate(90deg) scale(0.95);
         }
-      `}} />
+      `,
+        }}
+      />
 
       <Navbar />
       <AnnouncementPopup />
