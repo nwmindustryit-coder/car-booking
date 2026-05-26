@@ -12,14 +12,15 @@ import "react-datepicker/dist/react-datepicker.css"
 import { format, isToday } from "date-fns"
 import { th } from "date-fns/locale"
 import { EyeIcon, Search, Activity, AlertCircle, CalendarDays, Filter, RefreshCw, Trash2, SquarePen, Moon, Sun, CheckCircle2, AlertTriangle, Save, CarFront } from 'lucide-react'
+import { Booking, Mile } from '@/types/index'
 
 export default function AdminBookings() {
-    const [bookings, setBookings] = useState<any[]>([])
+    const [bookings, setBookings] = useState<Booking[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedMonth, setSelectedMonth] = useState('all') 
 
-    const [editBooking, setEditBooking] = useState<any | null>(null)
+    const [editBooking, setEditBooking] = useState<Booking | null>(null)
     const [editForm, setEditForm] = useState({
         driver_name: '',
         destination: '',
@@ -28,7 +29,7 @@ export default function AdminBookings() {
     })
     const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([])
     const [editBookingStatus, setEditBookingStatus] = useState<Record<string, string>>({})
-    const [showDetail, setShowDetail] = useState<any | null>(null)
+    const [showDetail, setShowDetail] = useState<Booking | null>(null)
     const [editStartMile, setEditStartMile] = useState('')
     const [editEndMile, setEditEndMile] = useState('')
 
@@ -105,16 +106,15 @@ export default function AdminBookings() {
         const { data, error } = await supabase
             .from("bookings")
             .select(`
-    *,
-    miles:miles!miles_booking_id_fkey(
-    id,
-      start_mile,
-      end_mile,
-      total_mile
-    ),
-    cars(plate)
-    )
-  `)
+                *,
+                miles:miles!miles_booking_id_fkey(
+                    id,
+                    start_mile,
+                    end_mile,
+                    total_mile
+                ),
+                cars(plate)
+            `)
             .order("date", { ascending: false })
 
         if (error) {
@@ -123,10 +123,10 @@ export default function AdminBookings() {
             return
         }
 
-        const mapped = data.map((b: any) => ({
+        const mapped: Booking[] = (data as any[]).map((b) => ({
             ...b,
             miles_status: b.miles ? "recorded" : "missing",
-            total_mile: b.miles?.total_mile ?? null,
+            total_mile: Array.isArray(b.miles) ? b.miles[0]?.total_mile : b.miles?.total_mile ?? null,
         }))
 
         setBookings(mapped)
@@ -154,7 +154,7 @@ export default function AdminBookings() {
         }
     }, [editBooking])
 
-    const deleteBooking = async (id: number) => {
+    const deleteBooking = async (id: string) => {
         if (!confirm('ต้องการลบการจองนี้หรือไม่?')) return
         const { error } = await supabase.from('bookings').delete().eq('id', id)
         if (error) alert(error.message)
@@ -204,10 +204,11 @@ export default function AdminBookings() {
 
     const filteredBookings = useMemo(() => {
         return bookings.filter(b => {
+            const carPlate = Array.isArray(b.cars) ? b.cars[0]?.plate : b.cars?.plate;
             const matchesSearch = 
                 b.driver_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 b.destination?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                b.cars?.plate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                carPlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 b.user_name?.toLowerCase().includes(searchTerm.toLowerCase());
             
             let matchesMonth = true;
@@ -394,7 +395,7 @@ export default function AdminBookings() {
                                                             <td className="p-2 sm:p-3 text-center font-medium">{b.driver_name}</td>
                                                             <td className="p-2 sm:p-3 text-center">
                                                                 <Badge variant="outline" className="bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 font-normal shadow-sm">
-                                                                    {b.cars?.plate}
+                                                                    {Array.isArray(b.cars) ? b.cars[0]?.plate : b.cars?.plate}
                                                                 </Badge>
                                                             </td>
                                                             <td className="p-2 sm:p-3 text-center text-slate-500 dark:text-slate-400">
@@ -473,7 +474,7 @@ export default function AdminBookings() {
                                     <span className="font-semibold text-slate-500 dark:text-slate-400">ทะเบียนรถ:</span>
                                     <span className="col-span-2">
                                       <Badge variant="outline" className="bg-slate-50 dark:bg-slate-700 dark:border-slate-600 shadow-sm font-normal">
-                                        {showDetail.cars?.plate}
+                                        {Array.isArray(showDetail.cars) ? showDetail.cars[0]?.plate : showDetail.cars?.plate}
                                       </Badge>
                                     </span>
                                 </div>
@@ -496,22 +497,30 @@ export default function AdminBookings() {
                                 
                                 {showDetail.miles ? (
                                     <div className="pt-4 border-t dark:border-slate-700 mt-2 space-y-2">
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <span className="font-semibold text-slate-500 dark:text-slate-400">เลขไมล์เริ่มต้น:</span>
-                                            <span className="col-span-2 font-mono bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded inline-block w-max border dark:border-slate-700">{showDetail.miles.start_mile}</span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <span className="font-semibold text-slate-500 dark:text-slate-400">เลขไมล์สิ้นสุด:</span>
-                                            <span className="col-span-2 font-mono bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded inline-block w-max border dark:border-slate-700">{showDetail.miles.end_mile}</span>
-                                        </div>
-                                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg flex items-center justify-between">
-                                            <span className="text-blue-800 dark:text-blue-300 font-semibold flex items-center gap-2">
-                                                <CarFront className="w-4 h-4" /> ระยะทางที่ใช้
-                                            </span>
-                                            <span className="text-blue-700 dark:text-blue-400 font-bold text-lg">
-                                                {showDetail.miles.total_mile ?? showDetail.miles.end_mile - showDetail.miles.start_mile} กม.
-                                            </span>
-                                        </div>
+                                        {(() => {
+                                            const m = Array.isArray(showDetail.miles) ? showDetail.miles[0] : showDetail.miles;
+                                            if (!m) return null;
+                                            return (
+                                                <>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <span className="font-semibold text-slate-500 dark:text-slate-400">เลขไมล์เริ่มต้น:</span>
+                                                        <span className="col-span-2 font-mono bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded inline-block w-max border dark:border-slate-700">{m.start_mile}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <span className="font-semibold text-slate-500 dark:text-slate-400">เลขไมล์สิ้นสุด:</span>
+                                                        <span className="col-span-2 font-mono bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded inline-block w-max border dark:border-slate-700">{m.end_mile}</span>
+                                                    </div>
+                                                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg flex items-center justify-between">
+                                                        <span className="text-blue-800 dark:text-blue-300 font-semibold flex items-center gap-2">
+                                                            <CarFront className="w-4 h-4" /> ระยะทางที่ใช้
+                                                        </span>
+                                                        <span className="text-blue-700 dark:text-blue-400 font-bold text-lg">
+                                                            {m.total_mile ?? m.end_mile - m.start_mile} กม.
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            )
+                                        })()}
                                     </div>
                                 ) : (
                                     <div className="pt-4 border-t dark:border-slate-700 mt-2">

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import Navbar from '@/components/Navbar'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,15 +7,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activity, ShieldCheck, User, Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { AdminUser } from '@/types/index'
 
 export default function AdminUsers() {
-    const [users, setUsers] = useState<any[]>([])
+    const [users, setUsers] = useState<AdminUser[]>([])
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('user')
     const [department, setDepartment] = useState('')
     
-    const [selectedUser, setSelectedUser] = useState<any | null>(null)
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
     const [editEmail, setEditEmail] = useState('')
     const [editRole, setEditRole] = useState('user')
     const [editPassword, setEditPassword] = useState('')
@@ -62,7 +63,7 @@ export default function AdminUsers() {
     useEffect(() => { loadUsers() }, [])
 
     // ✅ เพิ่มผู้ใช้ใหม่
-    const addUser = async (e: any) => {
+    const addUser = async (e: FormEvent) => {
         e.preventDefault()
         setLoading(true)
         const res = await fetch('/api/admin/create-user', {
@@ -88,7 +89,7 @@ export default function AdminUsers() {
     }
 
     // ✅ เปิด dialog แก้ไข
-    const openEditDialog = (user: any) => {
+    const openEditDialog = (user: AdminUser) => {
         setSelectedUser(user)
         setEditEmail(user.email)
         setEditRole(user.role)

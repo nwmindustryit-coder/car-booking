@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 import { useWorkouts } from "@/hooks/useWorkouts";
-import { Workout } from "@/types/workout";
+import { Workout } from "@/types/index";
 import { WorkOutForm } from "./components/WorkOutForm";
 import { WorkOutTable } from "./components/WorkOutTable";
 import { MonthFilter } from "./components/MonthFilter";

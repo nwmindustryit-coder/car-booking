@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -248,8 +249,8 @@ export default function PrivateMileageReportPage() {
           <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 mb-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="h-14 w-14 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center">
-                  <img src="/images/logo1.jpeg" alt="Company Logo" className="h-full w-full object-cover" />
+                <div className="h-14 w-14 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center relative">
+                  <Image src="/images/logo1.jpeg" alt="Company Logo" width={56} height={56} className="h-full w-full object-cover" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-slate-800">NWM.INDUSTRY Co.,Ltd</h2>

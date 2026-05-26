@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Workout, Profile } from "@/types/workout";
+import { Workout, Profile } from "@/types/index";
 import { useRouter } from "next/navigation";
 
 export function useWorkouts(viewMode: 'user' | 'admin') {

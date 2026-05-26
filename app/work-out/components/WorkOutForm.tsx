@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 import { User, Briefcase, CalendarDays, MapPin, Sun, Moon, Calculator, Clock, Banknote, Save } from "lucide-react";
 import { calculateWorkoutStats } from "@/hooks/useWorkouts";
-import { Workout } from "@/types/workout";
+import { Workout } from "@/types/index";
 import { supabase } from "@/lib/supabaseClient";
 
 const workoutSchema = z.object({

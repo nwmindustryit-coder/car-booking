@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
 import Navbar from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
@@ -243,7 +244,9 @@ export default function WorkOutReportPage() {
                     {/* Header */}
                     <div className="flex justify-between border-b pb-4 mb-4">
                         <div className="flex items-center gap-3">
-                            <img src="/images/logo1.jpeg" className="w-14 h-14 rounded-full border" />
+                            <div className="w-14 h-14 rounded-full border overflow-hidden relative">
+                                <Image src="/images/logo1.jpeg" alt="Logo" width={56} height={56} className="object-cover" />
+                            </div>
                             <div>
                                 <h2 className="font-semibold">NWM.INDUSTRY Co.,Ltd</h2>
                                 <p className="text-xs text-slate-600">บริษัท นวมิตร อุตสาหกรรม จำกัด</p>

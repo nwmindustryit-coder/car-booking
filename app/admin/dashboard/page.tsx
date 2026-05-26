@@ -2,14 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
-import { Button } from "@/components/ui/button"; // ✨ เพิ่มปุ่ม
-
-// ✅ 1. เพิ่ม Import สำหรับ format วันที่ (แก้ Error)
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Moon, Sun } from "lucide-react"; // ✨ นำเข้าไอคอนสำหรับปุ่มสลับโหมด
-
+import { Moon, Sun } from "lucide-react";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
+import { DashboardRow } from "@/types/index";
 
 import {
   Chart as ChartJS,
@@ -21,7 +19,7 @@ import {
   ArcElement,
   Tooltip,
   Legend,
-  Filler, // ✅ เพิ่ม Filler สำหรับแรเงากราฟเส้น
+  Filler,
 } from "chart.js";
 
 ChartJS.register(
@@ -36,8 +34,7 @@ ChartJS.register(
   Filler,
 );
 
-// ✅ ตั้งค่า Global Options ให้ Tooltip ของทุกกราฟดูพรีเมียม
-ChartJS.defaults.font.family = "'Prompt', 'Sarabun', sans-serif"; // รองรับฟอนต์ไทย
+ChartJS.defaults.font.family = "'Prompt', 'Sarabun', sans-serif";
 
 const tooltipOptions = {
   backgroundColor: "rgba(15, 23, 42, 0.9)",
@@ -49,7 +46,6 @@ const tooltipOptions = {
   boxPadding: 4,
 };
 
-// ---------- Format minutes to วัน ชม นาที ----------
 function formatDuration(mins: number) {
   if (!mins || mins <= 0) return "0 นาที";
   const days = Math.floor(mins / 1440);
@@ -65,26 +61,43 @@ function formatDuration(mins: number) {
   return parts.join(" ");
 }
 
+interface AggregatedCar {
+  plate: string;
+  trips: number;
+  km: number;
+  mins: number;
+}
+
+interface DeptStats {
+  dept: string;
+  trips: number;
+}
+
+interface MonthlySummary {
+  month: string;
+  trips: number;
+  km: number;
+  mins: number;
+}
+
 export default function DashboardPage() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<DashboardRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [modalData, setModalData] = useState<any[] | null>(null);
+  const [modalData, setModalData] = useState<DashboardRow[] | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
 
-  // 🌙 State สำหรับ Dark Mode
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ และเปลี่ยนสี ChartJS
   useEffect(() => {
     const savedTheme = localStorage.getItem("dashboardTheme");
     if (savedTheme === "dark") {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
-      ChartJS.defaults.color = "#94a3b8"; // สีฟอนต์กราฟในโหมดมืด
+      ChartJS.defaults.color = "#94a3b8";
     } else {
       document.documentElement.classList.remove("dark");
-      ChartJS.defaults.color = "#64748b"; // สีฟอนต์กราฟในโหมดสว่าง
+      ChartJS.defaults.color = "#64748b";
     }
   }, []);
 
@@ -109,7 +122,7 @@ export default function DashboardPage() {
       const { data: bookingsRaw, error: bErr } = await supabase.from("bookings")
         .select(`
                    id, date, time_slot, user_id,
-                   cars!inner ( plate ),
+                   cars ( plate ),
                    profiles:user_id ( department )
                 `);
 
@@ -125,18 +138,18 @@ export default function DashboardPage() {
         (milesData || []).map((m) => [m.booking_id, m]),
       );
 
-      const mapped = (bookingsRaw || []).map((b: any) => {
+      const mapped: DashboardRow[] = (bookingsRaw || []).map((b: any) => {
         const m = milesMap[b.id];
 
         const carPlate = (() => {
-          const c: any = b.cars;
+          const c = b.cars;
           if (!c) return "-";
           if (Array.isArray(c)) return c[0]?.plate ?? "-";
           return c.plate ?? "-";
         })();
 
         const dept = (() => {
-          const p: any = b.profiles;
+          const p = b.profiles;
           if (!p) return "-";
           if (Array.isArray(p)) return p[0]?.department ?? "-";
           return p.department ?? "-";
@@ -184,12 +197,8 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  // ---------- Aggregations ----------
   const aggregated = useMemo(() => {
-    const result: Record<
-      string,
-      { plate: string; trips: number; km: number; mins: number }
-    > = {};
+    const result: Record<string, AggregatedCar> = {};
     for (const r of rows) {
       if (!result[r.plate])
         result[r.plate] = { plate: r.plate, trips: 0, km: 0, mins: 0 };
@@ -201,7 +210,7 @@ export default function DashboardPage() {
   }, [rows]);
 
   const byDept = useMemo(() => {
-    const map: Record<string, { dept: string; trips: number }> = {};
+    const map: Record<string, DeptStats> = {};
     for (const r of rows) {
       if (!map[r.department])
         map[r.department] = { dept: r.department, trips: 0 };
@@ -219,7 +228,7 @@ export default function DashboardPage() {
     return map;
   }, [rows]);
 
-  const summary = useMemo(() => {
+  const summary = useMemo<MonthlySummary[]>(() => {
     const monthKeys = [...new Set(rows.map((r) => r.date.slice(0, 7)))]
       .sort()
       .reverse();

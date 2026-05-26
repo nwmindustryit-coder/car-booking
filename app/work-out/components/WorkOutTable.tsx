@@ -1,4 +1,4 @@
-import { Workout } from "@/types/workout";
+import { Workout } from "@/types/index";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";

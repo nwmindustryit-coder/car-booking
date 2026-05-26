@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { Menu, X, LogOut, KeyRound, LayoutDashboard, Settings, Map, Clock, CalendarDays } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -103,7 +104,14 @@ export default function Navbar() {
           
           {/* ✅ โลโก้ */}
           <Link href="/" className="flex items-center gap-3 group z-50">
-            <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain brightness-0 dark:invert transition-all" />
+            <Image 
+              src="/logo.png" 
+              alt="Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain brightness-0 dark:invert transition-all" 
+              priority
+            />
             <span className="font-extrabold text-xl text-slate-800 dark:text-white tracking-tight transition-colors">Nawa<span className="text-blue-600 dark:text-blue-400 font-medium">mit</span></span>
           </Link>
 
