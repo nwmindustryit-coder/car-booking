@@ -4,6 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { MapPin, Moon, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface WorkOutTableProps {
   rows: Workout[];
@@ -88,9 +99,26 @@ export function WorkOutTable({ rows, viewMode, isAdmin, currentUserId, onEdit, o
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30" onClick={() => onEdit(r)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => onDelete(r.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>ยืนยันการลบข้อมูล</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลการปฏิบัติงานนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(r.id)} className="bg-red-600 hover:bg-red-700">ลบข้อมูล</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   ) : (
                     <span className="text-[10px] text-slate-300 dark:text-slate-700">ไม่มีสิทธิ์</span>

@@ -15,7 +15,6 @@ import {
   Sun,
   FileText,
   Pencil,
-  Activity,
   ShieldAlert,
   Search,
   ArrowLeft,
@@ -26,6 +25,7 @@ import { Workout } from "@/types/workout";
 import { WorkOutForm } from "./components/WorkOutForm";
 import { WorkOutTable } from "./components/WorkOutTable";
 import { MonthFilter } from "./components/MonthFilter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WorkOutPage() {
   const [viewMode, setViewMode] = useState<'user' | 'admin'>('user');
@@ -61,13 +61,6 @@ export default function WorkOutPage() {
     return Array.from(monthsSet).sort().reverse();
   }, [rows]);
 
-  useEffect(() => {
-    if (availableMonths.length > 0 && selectedMonthFilter === "all") {
-       // Optional: Auto-select latest month if you want
-       // setSelectedMonthFilter(availableMonths[0]);
-    }
-  }, [availableMonths]);
-
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       const matchMonth = selectedMonthFilter === "all" || r.date.startsWith(selectedMonthFilter);
@@ -92,19 +85,12 @@ export default function WorkOutPage() {
     refresh();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-        <Navbar />
-        <main className="flex flex-col items-center justify-center h-[80vh]">
-          <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex flex-col items-center border dark:border-slate-700">
-            <Activity className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-            <p className="text-slate-600 dark:text-slate-300 font-medium text-lg">กำลังโหลดข้อมูล...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const handleDelete = async (id: string) => {
+    const success = await remove(id);
+    if (success) {
+      // success toast could be here
+    }
+  };
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
@@ -162,14 +148,35 @@ export default function WorkOutPage() {
               )}
             </CardTitle>
           </CardHeader>
-          <WorkOutForm 
-            userId={user.id}
-            initialData={editingWorkout}
-            department={profile?.department || ""}
-            employeeName={user.user_metadata?.full_name || ""}
-            onSuccess={handleSuccess}
-            onCancel={() => setEditingWorkout(null)}
-          />
+          {loading ? (
+            <CardContent className="pt-6 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-8 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <Skeleton className="h-24 w-full" />
+                </div>
+                <div className="lg:col-span-4">
+                  <Skeleton className="h-full min-h-[200px] w-full" />
+                </div>
+              </div>
+            </CardContent>
+          ) : (
+            <WorkOutForm 
+              userId={user?.id}
+              initialData={editingWorkout}
+              department={profile?.department || ""}
+              employeeName={user?.user_metadata?.full_name || ""}
+              onSuccess={handleSuccess}
+              onCancel={() => setEditingWorkout(null)}
+            />
+          )}
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden bg-white dark:bg-slate-800 transition-colors">
@@ -197,26 +204,38 @@ export default function WorkOutPage() {
           </CardHeader>
 
           <CardContent className="p-0">
-            <MonthFilter 
-              availableMonths={availableMonths} 
-              selectedMonth={selectedMonthFilter} 
-              onSelectMonth={setSelectedMonthFilter} 
-            />
-
-            {filteredRows.length === 0 ? (
-              <div className="p-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center">
-                <FileText className="w-12 h-12 text-slate-200 dark:text-slate-600 mb-3"/>
-                <p>ไม่พบประวัติการบันทึกข้อมูล</p>
+            {loading ? (
+              <div className="p-4 space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
             ) : (
-              <WorkOutTable 
-                rows={filteredRows}
-                viewMode={viewMode}
-                isAdmin={isAdmin}
-                currentUserId={user.id}
-                onEdit={handleEdit}
-                onDelete={remove}
-              />
+              <>
+                <MonthFilter 
+                  availableMonths={availableMonths} 
+                  selectedMonth={selectedMonthFilter} 
+                  onSelectMonth={setSelectedMonthFilter} 
+                />
+
+                {filteredRows.length === 0 ? (
+                  <div className="p-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center">
+                    <FileText className="w-12 h-12 text-slate-200 dark:text-slate-600 mb-3"/>
+                    <p>ไม่พบประวัติการบันทึกข้อมูล</p>
+                  </div>
+                ) : (
+                  <WorkOutTable 
+                    rows={filteredRows}
+                    viewMode={viewMode}
+                    isAdmin={isAdmin}
+                    currentUserId={user?.id}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                )}
+              </>
             )}
           </CardContent>
         </Card>
