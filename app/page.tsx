@@ -537,7 +537,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (availableMonths.length > 0 && !hasAutoSelected) {
-      setSelectedMonthFilter(availableMonths[0]);
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      if (availableMonths.includes(currentMonth)) {
+        setSelectedMonthFilter(currentMonth);
+      } else {
+        setSelectedMonthFilter(availableMonths[0]);
+      }
       setHasAutoSelected(true);
     }
   }, [availableMonths, hasAutoSelected]);
