@@ -9,6 +9,8 @@ import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activit
 import { supabase } from '@/lib/supabaseClient'
 import { AdminUser } from '@/types/index'
 
+import { useAlert } from '@/components/ui/alert-provider'
+
 export default function AdminUsers() {
     const [users, setUsers] = useState<AdminUser[]>([])
     const [email, setEmail] = useState('')
@@ -24,6 +26,7 @@ export default function AdminUsers() {
     
     const [loading, setLoading] = useState(false)
     const [isLoadingData, setIsLoadingData] = useState(true)
+    const { showAlert } = useAlert()
 
     // 🌙 State สำหรับ Dark Mode
     const [isDarkMode, setIsDarkMode] = useState(false)
@@ -80,12 +83,40 @@ export default function AdminUsers() {
         }
     }
 
-    // ✅ ลบผู้ใช้
+    // ✅ ลบผู้ใช้ (ปรับปรุงให้ลบจาก Auth ด้วย)
     const deleteUser = async (id: string, userEmail: string) => {
-        if (!confirm(`ต้องการลบผู้ใช้ ${userEmail} ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return
-        const { error } = await supabase.from('profiles').delete().eq('id', id)
-        if (error) alert(error.message)
-        else loadUsers()
+        showAlert({
+            title: "ยืนยันการลบ",
+            description: `ต้องการลบผู้ใช้ ${userEmail} ใช่หรือไม่? การกระทำนี้จะลบบัญชีผู้ใช้ออกโดยสมบูรณ์และไม่สามารถย้อนกลับได้`,
+            type: "confirm",
+            onConfirm: async () => {
+                setIsLoadingData(true)
+                try {
+                    const res = await fetch('/api/admin/delete-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id }),
+                    })
+                    const data = await res.json()
+                    
+                    if (!res.ok) throw new Error(data.error)
+                    
+                    showAlert({
+                        title: "ลบสำเร็จ",
+                        description: 'ลบผู้ใช้เรียบร้อยแล้ว ✅',
+                        type: "success"
+                    })
+                    loadUsers()
+                } catch (err: any) {
+                    showAlert({
+                        title: "ลบไม่สำเร็จ",
+                        description: 'ลบไม่สำเร็จ: ' + err.message,
+                        type: "error"
+                    })
+                    setIsLoadingData(false)
+                }
+            }
+        })
     }
 
     // ✅ เปิด dialog แก้ไข
@@ -113,9 +144,18 @@ export default function AdminUsers() {
         })
 
         const data = await res.json()
-        if (!res.ok) alert(data.error)
-        else {
-            alert('อัปเดตข้อมูลผู้ใช้สำเร็จ ✅')
+        if (!res.ok) {
+            showAlert({
+                title: "อัปเดตไม่สำเร็จ",
+                description: data.error,
+                type: "error"
+            })
+        } else {
+            showAlert({
+                title: "สำเร็จ",
+                description: 'อัปเดตข้อมูลผู้ใช้สำเร็จ ✅',
+                type: "success"
+            })
             setSelectedUser(null)
             loadUsers()
         }

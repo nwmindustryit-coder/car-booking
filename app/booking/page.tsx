@@ -15,6 +15,8 @@ import {
   AlignLeft, CheckCircle2, Clock, CalendarCheck , ChevronDown
 } from "lucide-react";
 
+import { useAlert } from "@/components/ui/alert-provider";
+
 const TIME_SLOTS = [
   "ก่อนเวลางาน",
   "08:00-09:00",
@@ -46,6 +48,7 @@ export default function BookingPage() {
   const [bookingStatus, setBookingStatus] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
   useEffect(() => {
@@ -126,9 +129,20 @@ export default function BookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!date) return alert("กรุณาเลือกวันที่ก่อนทำรายการ");
-    if (!form.car_id || selectedTimes.length === 0)
-      return alert("กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง");
+    if (!date) {
+      return showAlert({
+        title: "แจ้งเตือน",
+        description: "กรุณาเลือกวันที่ก่อนทำรายการ",
+        type: "warning"
+      });
+    }
+    if (!form.car_id || selectedTimes.length === 0) {
+      return showAlert({
+        title: "ข้อมูลไม่ครบ",
+        description: "กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง",
+        type: "warning"
+      });
+    }
 
     setIsSubmitting(true);
 
@@ -150,7 +164,11 @@ export default function BookingPage() {
         if (conflict) {
           setIsSubmitting(false);
           fetchBookingStatus(); 
-          return alert("⚠️ ขออภัยครับ บางช่วงเวลาที่คุณเลือกเพิ่งถูกผู้อื่นจองไปเมื่อสักครู่นี้ กรุณาเลือกเวลาใหม่ครับ");
+          return showAlert({
+            title: "จองซ้ำ",
+            description: "⚠️ ขออภัยครับ บางช่วงเวลาที่คุณเลือกเพิ่งถูกผู้อื่นจองไปเมื่อสักครู่นี้ กรุณาเลือกเวลาใหม่ครับ",
+            type: "error"
+          });
         }
       }
 
@@ -202,12 +220,20 @@ export default function BookingPage() {
           }),
         ]);
 
-        alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`);
-        router.push("/");
+        showAlert({
+          title: "จองสำเร็จ!",
+          description: `จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`,
+          type: "success",
+          onConfirm: () => router.push("/")
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในระบบขัดข้อง โปรดลองอีกครั้ง");
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดในระบบขัดข้อง โปรดลองอีกครั้ง",
+        type: "error"
+      });
     } finally {
       setIsSubmitting(false);
     }

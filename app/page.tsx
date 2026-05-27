@@ -36,6 +36,8 @@ import { th } from "date-fns/locale";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+import { useAlert } from "@/components/ui/alert-provider";
+
 // ฟังก์ชันเช็กช่วงเวลาปัจจุบัน
 const getCurrentTimeSlot = () => {
   const now = new Date();
@@ -97,6 +99,7 @@ export default function Dashboard() {
   });
 
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
   useEffect(() => {
@@ -459,9 +462,21 @@ export default function Dashboard() {
 
   // 💾 ฟังก์ชันบันทึกเลขไมล์
   const handleSaveMiles = async () => {
-    if (!startMile || !endMile) return alert("กรุณากรอกเลขไมล์ให้ครบ");
+    if (!startMile || !endMile) {
+      return showAlert({
+        title: "ข้อมูลไม่ครบ",
+        description: "กรุณากรอกเลขไมล์ให้ครบ",
+        type: "warning"
+      });
+    }
     const total = Number(endMile) - Number(startMile);
-    if (total < 0) return alert("เลขไมล์สิ้นสุดต้องมากกว่าเลขไมล์เริ่มต้น");
+    if (total < 0) {
+      return showAlert({
+        title: "ข้อมูลไม่ถูกต้อง",
+        description: "เลขไมล์สิ้นสุดต้องมากกว่าเลขไมล์เริ่มต้น",
+        type: "warning"
+      });
+    }
 
     const { error } = await supabase.from("miles").insert({
       booking_id: selectedBooking.id,
@@ -469,9 +484,18 @@ export default function Dashboard() {
       end_mile: Number(endMile),
     });
 
-    if (error) alert(error.message);
-    else {
-      alert(`บันทึกเลขไมล์เรียบร้อย (ใช้ไป ${total} กม.)`);
+    if (error) {
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: error.message,
+        type: "error"
+      });
+    } else {
+      showAlert({
+        title: "บันทึกสำเร็จ",
+        description: `บันทึกเลขไมล์เรียบร้อย (ใช้ไป ${total} กม.)`,
+        type: "success"
+      });
       setSelectedBooking(null);
       setStartMile("");
       setEndMile("");
@@ -482,49 +506,63 @@ export default function Dashboard() {
 
   // 🗑️ ฟังก์ชันลบรายการจอง (รองรับ Admin)
   const handleDeleteBooking = async (booking: any) => {
-    if (!confirm("ต้องการลบรายการจองนี้หรือไม่?")) return;
+    showAlert({
+      title: "ยืนยันการลบ",
+      description: `คุณต้องการลบรายการจองของรถ ${booking.cars?.plate} หรือไม่?`,
+      type: "confirm",
+      onConfirm: async () => {
+        // ยิง API แจ้งเตือนแบบขนาน
+        await Promise.allSettled([
+          fetch("/api/line/notify-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_name: user.email,
+              driver_name: booking.driver_name,
+              car_plate: booking.cars?.plate || "",
+              date: booking.date,
+              destination: booking.destination,
+            }),
+          }),
+          fetch("/api/telegram/notify-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_name: user.email,
+              driver_name: booking.driver_name,
+              car_plate: booking.cars?.plate || "",
+              date: booking.date,
+              destination: booking.destination,
+            }),
+          }),
+        ]);
 
-    // ยิง API แจ้งเตือนแบบขนาน
-    await Promise.allSettled([
-      fetch("/api/line/notify-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_name: user.email,
-          driver_name: booking.driver_name,
-          car_plate: booking.cars?.plate || "",
-          date: booking.date,
-          destination: booking.destination,
-        }),
-      }),
-      fetch("/api/telegram/notify-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_name: user.email,
-          driver_name: booking.driver_name,
-          car_plate: booking.cars?.plate || "",
-          date: booking.date,
-          destination: booking.destination,
-        }),
-      }),
-    ]);
+        // 🔒 ระบบจัดการสิทธิ์การลบ
+        let deleteQuery = supabase.from("bookings").delete().eq("id", booking.id);
 
-    // 🔒 ระบบจัดการสิทธิ์การลบ
-    let deleteQuery = supabase.from("bookings").delete().eq("id", booking.id);
+        // ถ้าไม่ใช่แอดมิน ให้ลบได้เฉพาะของ User ตัวเองเท่านั้น
+        if (!isAdmin) {
+          deleteQuery = deleteQuery.eq("user_id", user.id);
+        }
 
-    // ถ้าไม่ใช่แอดมิน ให้ลบได้เฉพาะของ User ตัวเองเท่านั้น
-    if (!isAdmin) {
-      deleteQuery = deleteQuery.eq("user_id", user.id);
-    }
+        const { error } = await deleteQuery;
 
-    const { error } = await deleteQuery;
-
-    if (error) alert("ลบไม่สำเร็จ: " + error.message);
-    else {
-      alert("ลบรายการสำเร็จ");
-      loadBookings();
-    }
+        if (error) {
+          showAlert({
+            title: "ลบไม่สำเร็จ",
+            description: "ลบไม่สำเร็จ: " + error.message,
+            type: "error"
+          });
+        } else {
+          showAlert({
+            title: "สำเร็จ",
+            description: "ลบรายการสำเร็จ",
+            type: "success"
+          });
+          loadBookings();
+        }
+      }
+    });
   };
 
   const availableMonths = useMemo(() => {
