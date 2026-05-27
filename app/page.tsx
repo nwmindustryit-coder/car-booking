@@ -996,43 +996,49 @@ export default function Dashboard() {
           </div>
 
           {availableMonths.length > 0 && (
-            <div className="flex overflow-x-auto pb-2 mb-4 gap-2 scrollbar-hide">
-              <Button
-                variant={selectedMonthFilter === "all" ? "default" : "outline"}
-                className={
-                  selectedMonthFilter === "all"
-                    ? "bg-blue-700 text-white dark:bg-blue-600"
-                    : "text-gray-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 transition-colors"
-                }
-                onClick={() => setSelectedMonthFilter("all")}
-                size="sm"
-              >
-                ดูทั้งหมด
-              </Button>
-              {availableMonths.map((monthStr) => {
-                const [year, month] = monthStr.split("-");
-                const monthName = format(
-                  new Date(Number(year), Number(month) - 1),
-                  "MMMM yyyy",
-                  { locale: th },
-                );
-                const isSelected = selectedMonthFilter === monthStr;
-                return (
-                  <Button
-                    key={monthStr}
-                    variant={isSelected ? "default" : "outline"}
-                    className={
-                      isSelected
-                        ? "bg-blue-700 text-white dark:bg-blue-600"
-                        : "text-gray-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 whitespace-nowrap transition-colors"
-                    }
-                    onClick={() => setSelectedMonthFilter(monthStr)}
-                    size="sm"
-                  >
-                    {monthName}
-                  </Button>
-                );
-              })}
+            <div className="relative mb-6">
+              {/* ✨ เอฟเฟกต์ Fade ด้านข้างเพื่อให้รู้ว่าเลื่อนได้ */}
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-blue-50 dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 sm:opacity-100"></div>
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-blue-50 dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 sm:opacity-100"></div>
+
+              <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-hide px-1 snap-x">
+                <Button
+                  variant={selectedMonthFilter === "all" ? "default" : "outline"}
+                  className={`snap-start whitespace-nowrap min-w-max transition-all duration-200 ${
+                    selectedMonthFilter === "all"
+                      ? "bg-blue-600 text-white shadow-md dark:bg-blue-500 scale-105"
+                      : "text-slate-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:border-blue-400"
+                  }`}
+                  onClick={() => setSelectedMonthFilter("all")}
+                  size="sm"
+                >
+                  📊 ดูทั้งหมด
+                </Button>
+                {availableMonths.map((monthStr) => {
+                  const [year, month] = monthStr.split("-");
+                  const monthName = format(
+                    new Date(Number(year), Number(month) - 1),
+                    "MMMM yyyy",
+                    { locale: th },
+                  );
+                  const isSelected = selectedMonthFilter === monthStr;
+                  return (
+                    <Button
+                      key={monthStr}
+                      variant={isSelected ? "default" : "outline"}
+                      className={`snap-start whitespace-nowrap min-w-max transition-all duration-200 ${
+                        isSelected
+                          ? "bg-blue-600 text-white shadow-md dark:bg-blue-500 scale-105"
+                          : "text-slate-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:border-blue-400"
+                      }`}
+                      onClick={() => setSelectedMonthFilter(monthStr)}
+                      size="sm"
+                    >
+                      📅 {monthName}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
