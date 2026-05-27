@@ -27,6 +27,8 @@ import {
   User,
   Moon,
   Sun,
+  CalendarDays,
+  Filter,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -996,48 +998,39 @@ export default function Dashboard() {
           </div>
 
           {availableMonths.length > 0 && (
-            <div className="relative mb-6">
-              {/* ✨ เอฟเฟกต์ Fade ด้านข้างเพื่อให้รู้ว่าเลื่อนได้ */}
-              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-blue-50 dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 sm:opacity-100"></div>
-              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-blue-50 dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 sm:opacity-100"></div>
-
-              <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-hide px-1 snap-x">
-                <Button
-                  variant={selectedMonthFilter === "all" ? "default" : "outline"}
-                  className={`snap-start whitespace-nowrap min-w-max transition-all duration-200 ${
-                    selectedMonthFilter === "all"
-                      ? "bg-blue-600 text-white shadow-md dark:bg-blue-500 scale-105"
-                      : "text-slate-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:border-blue-400"
-                  }`}
-                  onClick={() => setSelectedMonthFilter("all")}
-                  size="sm"
+            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
+                <CalendarDays className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span>แสดงข้อมูลตามเดือน:</span>
+              </div>
+              
+              <div className="relative w-full sm:w-64">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                <select
+                  value={selectedMonthFilter}
+                  onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                  className="pl-10 pr-10 w-full h-10 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none transition-all cursor-pointer hover:border-blue-400 dark:hover:border-blue-500"
                 >
-                  📊 ดูทั้งหมด
-                </Button>
-                {availableMonths.map((monthStr) => {
-                  const [year, month] = monthStr.split("-");
-                  const monthName = format(
-                    new Date(Number(year), Number(month) - 1),
-                    "MMMM yyyy",
-                    { locale: th },
-                  );
-                  const isSelected = selectedMonthFilter === monthStr;
-                  return (
-                    <Button
-                      key={monthStr}
-                      variant={isSelected ? "default" : "outline"}
-                      className={`snap-start whitespace-nowrap min-w-max transition-all duration-200 ${
-                        isSelected
-                          ? "bg-blue-600 text-white shadow-md dark:bg-blue-500 scale-105"
-                          : "text-slate-600 bg-white dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:border-blue-400"
-                      }`}
-                      onClick={() => setSelectedMonthFilter(monthStr)}
-                      size="sm"
-                    >
-                      📅 {monthName}
-                    </Button>
-                  );
-                })}
+                  <option value="all">ดูรายการทั้งหมด</option>
+                  {availableMonths.map((monthStr) => {
+                    const [year, month] = monthStr.split("-");
+                    const monthName = format(
+                      new Date(Number(year), Number(month) - 1),
+                      "MMMM yyyy",
+                      { locale: th },
+                    );
+                    return (
+                      <option key={monthStr} value={monthStr}>
+                        {monthName}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
           )}
