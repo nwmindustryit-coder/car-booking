@@ -15,7 +15,16 @@ import { EyeIcon, Search, Activity, AlertCircle, CalendarDays, Filter, RefreshCw
 import { Booking, Mile } from '@/types/index'
 
 export default function AdminBookings() {
+    const [user, setUser] = useState<any>(null)
     const [bookings, setBookings] = useState<Booking[]>([])
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data } = await supabase.auth.getUser()
+            setUser(data.user)
+        }
+        getUser()
+    }, [])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedMonth, setSelectedMonth] = useState('all') 
@@ -154,9 +163,36 @@ export default function AdminBookings() {
         }
     }, [editBooking])
 
-    const deleteBooking = async (id: string) => {
+    const deleteBooking = async (booking: any) => {
         if (!confirm('ต้องการลบการจองนี้หรือไม่?')) return
-        const { error } = await supabase.from('bookings').delete().eq('id', id)
+
+        // ยิง API แจ้งเตือนแบบขนาน
+        await Promise.allSettled([
+            fetch("/api/line/notify-delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_name: user?.email || "Admin",
+                    driver_name: booking.driver_name,
+                    car_plate: Array.isArray(booking.cars) ? booking.cars[0]?.plate : booking.cars?.plate || "",
+                    date: booking.date,
+                    destination: booking.destination,
+                }),
+            }),
+            fetch("/api/telegram/notify-delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_name: user?.email || "Admin",
+                    driver_name: booking.driver_name,
+                    car_plate: Array.isArray(booking.cars) ? booking.cars[0]?.plate : booking.cars?.plate || "",
+                    date: booking.date,
+                    destination: booking.destination,
+                }),
+            }),
+        ]);
+
+        const { error } = await supabase.from('bookings').delete().eq('id', booking.id)
         if (error) alert(error.message)
         else loadBookings()
     }
@@ -438,7 +474,7 @@ export default function AdminBookings() {
                                                                 className="h-8 w-8 p-0 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
                                                                     <SquarePen className="w-4 h-4" />
                                                                 </Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => deleteBooking(b.id)} className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
+                                                                <Button variant="ghost" size="sm" onClick={() => deleteBooking(b)} className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </Button>
                                                               </div>
@@ -572,7 +608,51 @@ export default function AdminBookings() {
                             }
 
                             if (error) alert(error.message)
-                            else { alert('อัปเดตข้อมูลเรียบร้อย'); setEditBooking(null); loadBookings() }
+                            else { 
+                                // ✅ ส่งแจ้งเตือนแบบขนาน
+                                await Promise.allSettled([
+                                    fetch("/api/line/notify-edit", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            user_name: user?.email || "Admin",
+                                            driver_name: editForm.driver_name,
+                                            destination: editForm.destination,
+                                            time_slot: newTimeSlots,
+                                            date: editForm.date.toLocaleDateString("sv-SE"),
+                                            car_plate: (Array.isArray(editBooking.cars) ? editBooking.cars[0]?.plate : editBooking.cars?.plate) || "",
+                                            reason: editForm.reason,
+                                            old_driver_name: editBooking.driver_name,
+                                            old_destination: editBooking.destination,
+                                            old_time_slot: editBooking.time_slot,
+                                            old_date: editBooking.date,
+                                            old_reason: editBooking.reason,
+                                        }),
+                                    }),
+                                    fetch("/api/telegram/notify-edit", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            user_name: user?.email || "Admin",
+                                            driver_name: editForm.driver_name,
+                                            destination: editForm.destination,
+                                            time_slot: newTimeSlots,
+                                            date: editForm.date.toLocaleDateString("sv-SE"),
+                                            car_plate: (Array.isArray(editBooking.cars) ? editBooking.cars[0]?.plate : editBooking.cars?.plate) || "",
+                                            reason: editForm.reason,
+                                            old_driver_name: editBooking.driver_name,
+                                            old_destination: editBooking.destination,
+                                            old_time_slot: editBooking.time_slot,
+                                            old_date: editBooking.date,
+                                            old_reason: editBooking.reason,
+                                        }),
+                                    }),
+                                ]);
+
+                                alert('อัปเดตข้อมูลเรียบร้อย ✅'); 
+                                setEditBooking(null); 
+                                loadBookings(); 
+                            }
                         }} className="space-y-4 pt-2">
                             
                             <div className="space-y-1.5">

@@ -482,30 +482,31 @@ export default function Dashboard() {
   const handleDeleteBooking = async (booking: any) => {
     if (!confirm("ต้องการลบรายการจองนี้หรือไม่?")) return;
 
-    // ยิง API แจ้งเตือน
-    await fetch("/api/line/notify-delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_name: user.email,
-        driver_name: booking.driver_name,
-        car_plate: booking.cars?.plate || "",
-        date: booking.date,
-        destination: booking.destination,
+    // ยิง API แจ้งเตือนแบบขนาน
+    await Promise.allSettled([
+      fetch("/api/line/notify-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_name: user.email,
+          driver_name: booking.driver_name,
+          car_plate: booking.cars?.plate || "",
+          date: booking.date,
+          destination: booking.destination,
+        }),
       }),
-    });
-
-    await fetch("/api/telegram/notify-delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_name: user.email,
-        driver_name: booking.driver_name,
-        car_plate: booking.cars?.plate || "",
-        date: booking.date,
-        destination: booking.destination,
+      fetch("/api/telegram/notify-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_name: user.email,
+          driver_name: booking.driver_name,
+          car_plate: booking.cars?.plate || "",
+          date: booking.date,
+          destination: booking.destination,
+        }),
       }),
-    });
+    ]);
 
     // 🔒 ระบบจัดการสิทธิ์การลบ
     let deleteQuery = supabase.from("bookings").delete().eq("id", booking.id);
@@ -1627,43 +1628,45 @@ export default function Dashboard() {
                         );
                     }
 
-                    await fetch("/api/line/notify-edit", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        user_name: user.email,
-                        driver_name: editForm.driver_name,
-                        destination: editForm.destination,
-                        time_slot: newTimeSlots,
-                        date: editForm.date.toLocaleDateString("sv-SE"),
-                        car_plate: editBooking.cars?.plate || "",
-                        reason: editForm.reason,
-                        old_driver_name: editBooking.driver_name,
-                        old_destination: editBooking.destination,
-                        old_time_slot: editBooking.time_slot,
-                        old_date: editBooking.date,
-                        old_reason: editBooking.reason,
+                    // ✅ ส่งแจ้งเตือนแบบขนาน
+                    await Promise.allSettled([
+                      fetch("/api/line/notify-edit", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          user_name: user.email,
+                          driver_name: editForm.driver_name,
+                          destination: editForm.destination,
+                          time_slot: newTimeSlots,
+                          date: editForm.date.toLocaleDateString("sv-SE"),
+                          car_plate: editBooking.cars?.plate || "",
+                          reason: editForm.reason,
+                          old_driver_name: editBooking.driver_name,
+                          old_destination: editBooking.destination,
+                          old_time_slot: editBooking.time_slot,
+                          old_date: editBooking.date,
+                          old_reason: editBooking.reason,
+                        }),
                       }),
-                    });
-
-                    await fetch("/api/telegram/notify-edit", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        user_name: user.email,
-                        driver_name: editForm.driver_name,
-                        destination: editForm.destination,
-                        time_slot: newTimeSlots,
-                        date: editForm.date.toLocaleDateString("sv-SE"),
-                        car_plate: editBooking.cars?.plate || "",
-                        reason: editForm.reason,
-                        old_driver_name: editBooking.driver_name,
-                        old_destination: editBooking.destination,
-                        old_time_slot: editBooking.time_slot,
-                        old_date: editBooking.date,
-                        old_reason: editBooking.reason,
+                      fetch("/api/telegram/notify-edit", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          user_name: user.email,
+                          driver_name: editForm.driver_name,
+                          destination: editForm.destination,
+                          time_slot: newTimeSlots,
+                          date: editForm.date.toLocaleDateString("sv-SE"),
+                          car_plate: editBooking.cars?.plate || "",
+                          reason: editForm.reason,
+                          old_driver_name: editBooking.driver_name,
+                          old_destination: editBooking.destination,
+                          old_time_slot: editBooking.time_slot,
+                          old_date: editBooking.date,
+                          old_reason: editBooking.reason,
+                        }),
                       }),
-                    });
+                    ]);
 
                     alert("อัปเดตข้อมูลเรียบร้อย ✅");
                     setEditBooking(null);

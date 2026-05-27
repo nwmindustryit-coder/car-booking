@@ -173,31 +173,34 @@ export default function BookingPage() {
       if (error) {
         console.error(error);
       } else {
-        await fetch("/api/line/notify-booking", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            driver_name: form.driver_name,
-            destination: form.destination,
-            time_slot: combinedSlot,
-            car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
-            date: formattedDate,
+        // ✅ ส่งแจ้งเตือนแบบขนาน (Parallel) เพื่อความรวดเร็วและไม่ขัดขวางกัน
+        await Promise.allSettled([
+          fetch("/api/line/notify-booking", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              driver_name: form.driver_name,
+              destination: form.destination,
+              time_slot: combinedSlot,
+              car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
+              date: formattedDate,
+              reason: form.reason,
+            }),
           }),
-        });
-
-        await fetch("/api/telegram/notify-booking", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_name: user.email,
-            driver_name: form.driver_name,
-            destination: form.destination,
-            time_slot: combinedSlot,
-            car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
-            date: formattedDate,
-            reason: form.reason,
+          fetch("/api/telegram/notify-booking", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_name: user.email,
+              driver_name: form.driver_name,
+              destination: form.destination,
+              time_slot: combinedSlot,
+              car_plate: cars.find((c) => String(c.id) === String(form.car_id))?.plate || "",
+              date: formattedDate,
+              reason: form.reason,
+            }),
           }),
-        });
+        ]);
 
         alert(`จองรถสำเร็จ (ช่วงเวลา: ${combinedSlot})`);
         router.push("/");
