@@ -228,7 +228,7 @@ export default function BookingPage() {
     // ✨ แก้ไขสีพื้นหลังให้เป็นทึบเหมือนหน้าอื่น (ลบ /50 ออกจากฝั่ง dark)
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
       <Navbar />
-      <main className="p-3 sm:p-6 max-w-3xl mx-auto mt-2 sm:mt-4">
+      <main className="pt-24 p-3 sm:p-6 max-w-3xl mx-auto">
         
         {/* Header Title */}
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">

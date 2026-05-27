@@ -903,7 +903,7 @@ export default function Dashboard() {
 
       <Navbar />
       <AnnouncementPopup />
-      <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-300">
+      <div className="pt-20 p-4 md:p-6 md:pt-24 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-300">
         <main className="max-w-6xl mx-auto">
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">

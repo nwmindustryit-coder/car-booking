@@ -267,7 +267,7 @@ export default function AdminBookings() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
             <Navbar />
-            <main className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+            <main className="pt-24 p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
                 
                 {/* Header & Dashboard Cards */}
                 <div>

@@ -95,7 +95,7 @@ export default function WorkOutPage() {
   return (
     <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
       <Navbar />
-      <main className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 mt-4">
+      <main className="pt-24 p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
         
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>

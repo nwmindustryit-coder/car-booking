@@ -289,7 +289,7 @@ export default function FleetCalendar() {
         }
       `}} />
 
-      <main className="max-w-[1400px] mx-auto p-3 sm:p-6 mt-2 sm:mt-4">
+      <main className="max-w-[1400px] mx-auto pt-24 p-3 sm:p-6">
         
         {/* ✨ Header Mobile-Friendly */}
         <div className="flex flex-col gap-4 mb-6">
