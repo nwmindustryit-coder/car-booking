@@ -1133,9 +1133,12 @@ export default function Dashboard() {
                     <div
                       className={`px-4 py-2 text-sm sm:text-base font-semibold text-white flex justify-between items-center ${bgColor} transition-colors`}
                     >
-                      <div>
-                        📅 {format(d, "dd MMMM yyyy", { locale: th })}{" "}
-                        {isToday(d) && "(วันนี้)"}
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-5 h-5 text-white/90" />
+                        <span>
+                          {format(d, "dd MMMM yyyy", { locale: th })}{" "}
+                          {isToday(d) && "(วันนี้)"}
+                        </span>
                       </div>
                       <div className="text-sm text-gray-200 dark:text-slate-100">
                         ({group.length.toLocaleString("th-TH")} รายการ)
@@ -1495,8 +1498,9 @@ export default function Dashboard() {
                       <p>
                         <b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}
                       </p>
-                      <p className="text-blue-700 dark:text-blue-400 font-semibold">
-                        🚗 ใช้ไปทั้งหมด{" "}
+                      <p className="text-blue-700 dark:text-blue-400 font-semibold flex items-center gap-2">
+                        <CarIcon className="w-4 h-4" />
+                        ใช้ไปทั้งหมด{" "}
                         {showDetail.miles.total_mile ??
                           showDetail.miles.end_mile -
                             showDetail.miles.start_mile}{" "}
