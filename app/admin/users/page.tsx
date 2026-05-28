@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activity, ShieldCheck, User, Sun, Moon } from 'lucide-react'
+import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activity, ShieldCheck, User, Sun, Moon, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminUser } from '@/types/index'
 
@@ -406,8 +406,8 @@ export default function AdminUsers() {
                                     <Button variant="outline" className="w-1/2 h-11 bg-white dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700" onClick={() => setSelectedUser(null)}>
                                         ยกเลิก
                                     </Button>
-                                    <Button className="w-1/2 h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white" onClick={handleEditSave}>
-                                        💾 บันทึกข้อมูล
+                                    <Button className="w-1/2 h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white flex items-center justify-center gap-2" onClick={handleEditSave}>
+                                        <Save className="w-4 h-4" /> บันทึกข้อมูล
                                     </Button>
                                 </div>
                             </div>

@@ -31,6 +31,7 @@ import {
   Filter,
   CheckCircle2,
   AlertCircle,
+  Save,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -462,7 +463,7 @@ export default function Dashboard() {
     } else setUsedMile(null);
   }, [startMile, endMile]);
 
-  // 💾 ฟังก์ชันบันทึกเลขไมล์
+  // Save ฟังก์ชันบันทึกเลขไมล์
   const handleSaveMiles = async () => {
     if (!startMile || !endMile) {
       return showAlert({
@@ -1588,10 +1589,10 @@ export default function Dashboard() {
                   )}
 
                   <Button
-                    className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white"
+                    className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white flex items-center justify-center gap-2"
                     onClick={handleSaveMiles}
                   >
-                    💾 ยืนยันการบันทึก
+                    <Save className="w-5 h-5" /> ยืนยันการบันทึก
                   </Button>
                 </div>
               )}
@@ -1893,9 +1894,9 @@ export default function Dashboard() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white mt-4"
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white mt-4 flex items-center justify-center gap-2"
                   >
-                    💾 บันทึกการแก้ไข
+                    <Save className="w-4 h-4" /> บันทึกการแก้ไข
                   </Button>
                 </form>
               )}

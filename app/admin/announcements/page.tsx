@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit, Eye, EyeOff, CalendarClock, Sun, Moon } from "lucide-react";
+import { Trash2, Edit, Eye, EyeOff, CalendarClock, Sun, Moon, Save } from "lucide-react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { format } from "date-fns";
@@ -290,8 +290,9 @@ export default function AdminAnnouncements() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-sm">
-                {isEditing ? "💾 บันทึกการแก้ไข" : "🚀 บันทึกและตั้งเวลา"}
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-sm flex items-center gap-2">
+                <Save className="w-4 h-4" />
+                {isEditing ? "บันทึกการแก้ไข" : "บันทึกและตั้งเวลา"}
               </Button>
               {isEditing && (
                 <Button type="button" variant="outline" className="dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" onClick={() => { 
