@@ -18,8 +18,13 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  // เพิ่มโปรไฟล์พร้อม role
-  await supabaseAdmin.from('profiles').insert({ id: data.user.id, role, department, })
+  // เพิ่มโปรไฟล์พร้อม role และ email
+  await supabaseAdmin.from('profiles').insert({ 
+    id: data.user.id, 
+    email, 
+    role, 
+    department, 
+  })
 
   return NextResponse.json({ message: 'User created', id: data.user.id })
 }
