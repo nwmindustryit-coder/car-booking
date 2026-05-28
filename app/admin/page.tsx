@@ -15,14 +15,16 @@ import {
   Megaphone,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  Rocket,
+  Lightbulb
 } from "lucide-react";
 
 export default function AdminPage() {
-  // 🌙 State สำหรับ Dark Mode
+  // Moon State สำหรับ Dark Mode
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  // Rocket โหลดสถานะ Dark Mode ตอนเข้าเว็บ
   useEffect(() => {
     const savedTheme = localStorage.getItem("dashboardTheme");
     if (savedTheme === "dark") {
@@ -177,7 +179,9 @@ export default function AdminPage() {
         {/* Quick Tips or Footer */}
         <footer className="mt-12 p-8 rounded-3xl bg-slate-900 dark:bg-slate-950 text-white overflow-hidden relative border dark:border-slate-800 transition-colors">
           <div className="relative z-10">
-            <h3 className="text-lg font-bold">💡 ข้อแนะนำสำหรับแอดมิน</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-amber-400" /> ข้อแนะนำสำหรับแอดมิน
+            </h3>
             <p className="text-slate-400 mt-2 text-sm max-w-2xl leading-relaxed">
               หากต้องการส่งประกาศสำคัญให้ User ทุกคนเห็นทันทีที่เปิดแอป ให้ใช้เมนู "จัดการประกาศ" และเลือกสถานะเป็น Active 
               ระบบจะแสดงผลแบบ Popup ให้กับทุกคนที่เข้าหน้าแรกของระบบจองรถ

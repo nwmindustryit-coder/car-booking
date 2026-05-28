@@ -28,10 +28,10 @@ export default function AdminUsers() {
     const [isLoadingData, setIsLoadingData] = useState(true)
     const { showAlert } = useAlert()
 
-    // 🌙 State สำหรับ Dark Mode
+    // Moon State สำหรับ Dark Mode
     const [isDarkMode, setIsDarkMode] = useState(false)
 
-    // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+    // Rocket โหลดสถานะ Dark Mode ตอนเข้าเว็บ
     useEffect(() => {
       const savedTheme = localStorage.getItem("dashboardTheme")
       if (savedTheme === "dark") {
@@ -54,7 +54,7 @@ export default function AdminUsers() {
       }
     }
 
-    // ✅ โหลดผู้ใช้ทั้งหมด
+    // Check โหลดผู้ใช้ทั้งหมด
     const loadUsers = async () => {
         setIsLoadingData(true)
         const res = await fetch('/api/admin/list-users')
@@ -65,7 +65,7 @@ export default function AdminUsers() {
 
     useEffect(() => { loadUsers() }, [])
 
-    // ✅ เพิ่มผู้ใช้ใหม่
+    // Check เพิ่มผู้ใช้ใหม่
     const addUser = async (e: FormEvent) => {
         e.preventDefault()
         setLoading(true)
@@ -93,7 +93,7 @@ export default function AdminUsers() {
         }
     }
 
-    // ✅ ลบผู้ใช้ (ปรับปรุงให้ลบจาก Auth ด้วย)
+    // Check ลบผู้ใช้ (ปรับปรุงให้ลบจาก Auth ด้วย)
     const deleteUser = async (id: string, userEmail: string) => {
         showAlert({
             title: "ยืนยันการลบ",
@@ -113,7 +113,7 @@ export default function AdminUsers() {
                     
                     showAlert({
                         title: "ลบสำเร็จ",
-                        description: 'ลบผู้ใช้เรียบร้อยแล้ว ✅',
+                        description: 'ลบผู้ใช้เรียบร้อยแล้ว',
                         type: "success"
                     })
                     loadUsers()
@@ -129,7 +129,7 @@ export default function AdminUsers() {
         })
     }
 
-    // ✅ เปิด dialog แก้ไข
+    // Check เปิด dialog แก้ไข
     const openEditDialog = (user: AdminUser) => {
         setSelectedUser(user)
         setEditEmail(user.email)
@@ -138,7 +138,7 @@ export default function AdminUsers() {
         setEditPassword('') // รีเซ็ตช่องรหัสผ่านทุกครั้งที่เปิด
     }
 
-    // ✅ บันทึกการแก้ไข
+    // Check บันทึกการแก้ไข
     const handleEditSave = async () => {
         if (!selectedUser) return
         const res = await fetch('/api/admin/update-user', {
@@ -163,7 +163,7 @@ export default function AdminUsers() {
         } else {
             showAlert({
                 title: "สำเร็จ",
-                description: 'อัปเดตข้อมูลผู้ใช้สำเร็จ ✅',
+                description: 'อัปเดตข้อมูลผู้ใช้สำเร็จ',
                 type: "success"
             })
             setSelectedUser(null)

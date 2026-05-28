@@ -44,10 +44,10 @@ export default function AdminBookings() {
     const [editStartMile, setEditStartMile] = useState('')
     const [editEndMile, setEditEndMile] = useState('')
 
-    // 🌙 State สำหรับ Dark Mode
+    // Moon State สำหรับ Dark Mode
     const [isDarkMode, setIsDarkMode] = useState(false)
 
-    // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+    // Rocket โหลดสถานะ Dark Mode ตอนเข้าเว็บ
     useEffect(() => {
       const savedTheme = localStorage.getItem("dashboardTheme")
       if (savedTheme === "dark") {

@@ -47,7 +47,7 @@ export default function PrivateMileagePage() {
   const [viewMode, setViewMode] = useState<'user' | 'admin'>('user'); // ✅ เริ่มต้นเป็น user เสมอ
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // 🌙 State สำหรับ Dark Mode
+  // Moon State สำหรับ Dark Mode
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // States: Data
@@ -69,7 +69,7 @@ export default function PrivateMileagePage() {
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("all");
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
-  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  // Rocket โหลดสถานะ Dark Mode ตอนเข้าเว็บ
   useEffect(() => {
     const savedTheme = localStorage.getItem("dashboardTheme");
     if (savedTheme === "dark") {

@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit, Eye, EyeOff, CalendarClock, Sun, Moon, Save } from "lucide-react";
+import { Trash2, Edit, Eye, EyeOff, CalendarClock, Sun, Moon, Save, Pencil, Megaphone, Rocket } from "lucide-react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 import { format } from "date-fns";
@@ -19,10 +19,10 @@ export default function AdminAnnouncements() {
   const [isEditing, setIsEditing] = useState(false);
   const quillRef = useRef<any>(null);
 
-  // 🌙 State สำหรับ Dark Mode
+  // Moon State สำหรับ Dark Mode
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // ✅ เพิ่ม start_date และ end_date ใน State (ตั้งค่าเริ่มต้นเป็นวันนี้ ถึง อีก 7 วันข้างหน้า)
+  // Check start_date และ end_date ใน State (ตั้งค่าเริ่มต้นเป็นวันนี้ ถึง อีก 7 วันข้างหน้า)
   const [form, setForm] = useState({
     id: "",
     title: "",
@@ -32,7 +32,7 @@ export default function AdminAnnouncements() {
     end_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm"),
   });
 
-  // 🚀 โหลดสถานะ Dark Mode ตอนเข้าเว็บ
+  // Rocket โหลดสถานะ Dark Mode ตอนเข้าเว็บ
   useEffect(() => {
     const savedTheme = localStorage.getItem("dashboardTheme");
     if (savedTheme === "dark") {
@@ -220,8 +220,9 @@ export default function AdminAnnouncements() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
-          <h2 className="text-lg font-semibold mb-4 text-blue-700 dark:text-blue-400">
-            {isEditing ? "✏️ แก้ไขประกาศ" : "📢 สร้างประกาศใหม่"}
+          <h2 className="text-lg font-semibold mb-4 text-blue-700 dark:text-blue-400 flex items-center gap-2">
+            {isEditing ? <Pencil className="w-5 h-5" /> : <Megaphone className="w-5 h-5" />}
+            {isEditing ? "แก้ไขประกาศ" : "สร้างประกาศใหม่"}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

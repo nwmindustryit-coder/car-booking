@@ -32,6 +32,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Save,
+  Megaphone,
+  Rocket,
+  Lightbulb,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -1985,13 +1988,16 @@ export default function Dashboard() {
                         {selectedNewCar &&
                           swapOptions.find((c) => c.id === selectedNewCar)
                             ?.isBooked && (
-                            <div className="p-3 mt-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 text-sm">
-                              ⚠️ <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
-                              จะถูกย้ายมาขับรถ{" "}
-                              <b className="dark:text-white">
-                                {swapBooking.cars?.plate}
-                              </b>{" "}
-                              แทนอัตโนมัติ
+                            <div className="p-3 mt-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 text-sm flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                              <span>
+                                <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
+                                จะถูกย้ายมาขับรถ{" "}
+                                <b className="dark:text-white">
+                                  {swapBooking.cars?.plate}
+                                </b>{" "}
+                                แทนอัตโนมัติ
+                              </span>
                             </div>
                           )}
                       </>

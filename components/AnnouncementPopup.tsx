@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
+import { Megaphone, X } from "lucide-react";
 
 // ✅ 1. Import ReactQuill แบบไม่ใช้ SSR และดึง CSS มาด้วย
 import "react-quill-new/dist/quill.snow.css"; 
@@ -64,10 +65,10 @@ export default function AnnouncementPopup() {
         {/* หัว Popup */}
         <div className="bg-blue-600 p-4 rounded-t-2xl flex items-center justify-between">
           <h2 className="text-white font-bold text-lg flex items-center gap-2">
-            📢 ประกาศแจ้งเตือน
+            <Megaphone className="w-5 h-5" /> ประกาศแจ้งเตือน
           </h2>
           <button onClick={handleClose} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors">
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
