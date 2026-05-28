@@ -13,8 +13,10 @@ import { format, isToday } from "date-fns"
 import { th } from "date-fns/locale"
 import { EyeIcon, Search, Activity, AlertCircle, CalendarDays, Filter, RefreshCw, Trash2, SquarePen, Moon, Sun, CheckCircle2, AlertTriangle, Save, CarFront } from 'lucide-react'
 import { Booking, Mile } from '@/types/index'
+import { useAlert } from '@/components/ui/alert-provider'
 
 export default function AdminBookings() {
+    const { showAlert } = useAlert()
     const [user, setUser] = useState<any>(null)
     const [bookings, setBookings] = useState<Booking[]>([])
 
@@ -193,8 +195,20 @@ export default function AdminBookings() {
         ]);
 
         const { error } = await supabase.from('bookings').delete().eq('id', booking.id)
-        if (error) alert(error.message)
-        else loadBookings()
+        if (error) {
+            showAlert({
+                title: "เกิดข้อผิดพลาด",
+                description: error.message,
+                type: "error"
+            })
+        } else {
+            showAlert({
+                title: "สำเร็จ!",
+                description: "ลบข้อมูลการจองเรียบร้อยแล้ว",
+                type: "success"
+            })
+            loadBookings()
+        }
     }
 
     useEffect(() => { loadBookings() }, [])
@@ -585,7 +599,11 @@ export default function AdminBookings() {
                         <form onSubmit={async (e) => {
                             e.preventDefault()
                             const newTimeSlots = TIME_SLOTS.filter(slot => selectedEditTimes.includes(slot)).join(', ')
-                            if (!newTimeSlots) return alert('กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง')
+                            if (!newTimeSlots) return showAlert({
+                                title: "แจ้งเตือน",
+                                description: "กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง",
+                                type: "error"
+                            })
 
                             const { data: checkData } = await supabase.from('bookings').select('id, time_slot').eq('car_id', editBooking.car_id).eq('date', editForm.date.toISOString().split('T')[0])
                             const conflict = checkData?.some(b => {
@@ -593,7 +611,11 @@ export default function AdminBookings() {
                                 const booked = b.time_slot.split(',').map(s => s.trim())
                                 return booked.some(slot => selectedEditTimes.includes(slot))
                             })
-                            if (conflict) return alert('บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่')
+                            if (conflict) return showAlert({
+                                title: "เวลาไม่ว่าง",
+                                description: "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
+                                type: "error"
+                            })
 
                             const { error } = await supabase.from('bookings').update({
                                 driver_name: editForm.driver_name, destination: editForm.destination, reason: editForm.reason,
@@ -604,11 +626,20 @@ export default function AdminBookings() {
                                 const { error: milesError } = await supabase.from("miles").upsert({
                                     booking_id: editBooking.id, start_mile: Number(editStartMile), end_mile: Number(editEndMile)
                                 }, { onConflict: "booking_id" })
-                                if (milesError) return alert("ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message)
+                                if (milesError) return showAlert({
+                                    title: "เกิดข้อผิดพลาด",
+                                    description: "ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message,
+                                    type: "error"
+                                })
                             }
 
-                            if (error) alert(error.message)
-                            else { 
+                            if (error) {
+                                showAlert({
+                                    title: "เกิดข้อผิดพลาด",
+                                    description: error.message,
+                                    type: "error"
+                                })
+                            } else { 
                                 // ✅ ส่งแจ้งเตือนแบบขนาน
                                 await Promise.allSettled([
                                     fetch("/api/line/notify-edit", {
@@ -649,7 +680,11 @@ export default function AdminBookings() {
                                     }),
                                 ]);
 
-                                alert('อัปเดตข้อมูลเรียบร้อย');
+                                showAlert({
+                                    title: "สำเร็จ!",
+                                    description: "อัปเดตข้อมูลเรียบร้อย",
+                                    type: "success"
+                                })
                                 setEditBooking(null)
                                 loadBookings()
                             }

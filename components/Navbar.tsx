@@ -8,9 +8,11 @@ import { Menu, X, LogOut, KeyRound, LayoutDashboard, Settings, Map, Clock, Calen
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { useAlert } from './ui/alert-provider'
 
 export default function Navbar() {
   const router = useRouter()
+  const { showAlert } = useAlert()
   const [user, setUser] = useState<any>(null)
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -85,7 +87,11 @@ export default function Navbar() {
       return setPasswordError(updateError.message)
     }
 
-    alert("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว 🎉")
+    showAlert({
+      title: "สำเร็จ!",
+      description: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว",
+      type: "success"
+    })
     setShowChangePassword(false)
     setOldPassword('')
     setNewPassword('')

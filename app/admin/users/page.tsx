@@ -76,8 +76,18 @@ export default function AdminUsers() {
         })
         const data = await res.json()
         setLoading(false)
-        if (!res.ok) alert(data.error)
-        else {
+        if (!res.ok) {
+            showAlert({
+                title: "สร้างผู้ใช้ไม่สำเร็จ",
+                description: data.error,
+                type: "error"
+            })
+        } else {
+            showAlert({
+                title: "สำเร็จ!",
+                description: "สร้างผู้ใช้ใหม่เรียบร้อยแล้ว",
+                type: "success"
+            })
             setEmail(''); setPassword(''); setRole('user'); setDepartment('');
             loadUsers()
         }

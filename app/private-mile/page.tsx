@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Pencil, Trash2, FileText, ArrowLeft, Search, User, ShieldAlert, Save, ClipboardList, Moon, Sun } from "lucide-react";
+import { useAlert } from "@/components/ui/alert-provider";
 
 const RATE_PER_KM = 5;
 
@@ -38,6 +39,7 @@ type UserData = {
 
 export default function PrivateMileagePage() {
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   // States: User & Permissions
   const [user, setUser] = useState<UserData | null>(null);
@@ -208,23 +210,32 @@ export default function PrivateMileagePage() {
     if (!confirm(`คุณต้องการลบรายการวันที่ ${format(new Date(row.date), "dd/MM/yyyy")} ใช่ไหม?`)) return;
     const { error } = await supabase.from("mileages").delete().eq("id", row.id);
     if (error) {
-      alert("ลบรายการไม่สำเร็จ");
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: "ลบรายการไม่สำเร็จ: " + error.message,
+        type: "error"
+      });
       return;
     }
+    showAlert({
+      title: "สำเร็จ!",
+      description: "ลบรายการเรียบร้อยแล้ว",
+      type: "success"
+    });
     setRows((prev) => prev.filter((r) => r.id !== row.id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!date) return alert("กรุณาเลือกวันที่");
-    if (!location.trim()) return alert("กรุณากรอกสถานที่");
-    if (!startMile || !endMile) return alert("กรุณากรอกเลขไมล์ให้ครบ");
+    if (!date) return showAlert({ title: "แจ้งเตือน", description: "กรุณาเลือกวันที่", type: "error" });
+    if (!location.trim()) return showAlert({ title: "แจ้งเตือน", description: "กรุณากรอกสถานที่", type: "error" });
+    if (!startMile || !endMile) return showAlert({ title: "แจ้งเตือน", description: "กรุณากรอกเลขไมล์ให้ครบ", type: "error" });
 
     const start = Number(startMile);
     const end = Number(endMile);
-    if (Number.isNaN(start) || Number.isNaN(end)) return alert("เลขไมล์ต้องเป็นตัวเลข");
-    if (end < start) return alert("เลขไมล์สิ้นสุดต้องมากกว่าหรือเท่ากับเลขไมล์เริ่มต้น");
+    if (Number.isNaN(start) || Number.isNaN(end)) return showAlert({ title: "แจ้งเตือน", description: "เลขไมล์ต้องเป็นตัวเลข", type: "error" });
+    if (end < start) return showAlert({ title: "แจ้งเตือน", description: "เลขไมล์สิ้นสุดต้องมากกว่าหรือเท่ากับเลขไมล์เริ่มต้น", type: "error" });
 
     setSaving(true);
     const payload = {
@@ -239,15 +250,19 @@ export default function PrivateMileagePage() {
 
     if (!editingId) {
       const { data, error } = await supabase.from("mileages").insert(payload).select().single();
-      if (error) alert("บันทึกไม่สำเร็จ");
-      else {
+      if (error) {
+        showAlert({ title: "เกิดข้อผิดพลาด", description: "บันทึกไม่สำเร็จ: " + error.message, type: "error" });
+      } else {
+        showAlert({ title: "สำเร็จ!", description: "บันทึกข้อมูลเรียบร้อยแล้ว", type: "success" });
         setRows((prev) => [data as MileageRow, ...prev]);
         resetForm();
       }
     } else {
       const { data, error } = await supabase.from("mileages").update(payload).eq("id", editingId).select().single();
-      if (error) alert("แก้ไขไม่สำเร็จ");
-      else {
+      if (error) {
+        showAlert({ title: "เกิดข้อผิดพลาด", description: "แก้ไขไม่สำเร็จ: " + error.message, type: "error" });
+      } else {
+        showAlert({ title: "สำเร็จ!", description: "แก้ไขข้อมูลเรียบร้อยแล้ว", type: "success" });
         setRows((prev) => prev.map((r) => (r.id === editingId ? (data as MileageRow) : r)));
         resetForm();
       }

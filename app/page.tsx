@@ -29,6 +29,8 @@ import {
   Sun,
   CalendarDays,
   Filter,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
@@ -628,7 +630,12 @@ export default function Dashboard() {
 
   // 🔄 ระบบสลับรถ (บันทึกข้อมูล)
   const handleSwapSubmit = async () => {
-    if (!selectedNewCar) return alert("กรุณาเลือกรถที่ต้องการสลับ");
+    if (!selectedNewCar)
+      return showAlert({
+        title: "แจ้งเตือน",
+        description: "กรุณาเลือกรถที่ต้องการสลับ",
+        type: "error",
+      });
     setIsSwapping(true);
 
     const targetCar = swapOptions.find((c) => c.id === selectedNewCar);
@@ -650,16 +657,22 @@ export default function Dashboard() {
 
       if (moveOurError) throw moveOurError;
 
-      alert(
-        targetCar?.isBooked
-          ? "สลับรถระหว่างคิวสำเร็จแล้ว! 🔄🚗"
-          : "เปลี่ยนรถเรียบร้อยแล้ว! 🚗✅",
-      );
+      showAlert({
+        title: "สำเร็จ!",
+        description: targetCar?.isBooked
+          ? "สลับรถระหว่างคิวสำเร็จแล้ว!"
+          : "เปลี่ยนรถเรียบร้อยแล้ว!",
+        type: "success"
+      });
       setSwapBooking(null);
       await loadBookings();
       fetchCarStatus();
     } catch (err: any) {
-      alert("เกิดข้อผิดพลาด: " + err.message);
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: err.message,
+        type: "error"
+      });
     } finally {
       setIsSwapping(false);
     }
@@ -1178,15 +1191,14 @@ export default function Dashboard() {
                               <div className="w-full sm:w-auto flex justify-center sm:justify-start">
                                 {b.miles_status === "recorded" ? (
                                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-emerald-800/50">
-                                    ลงไมล์แล้ว ({b.total_mile} กม.)
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> ลงไมล์แล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
                                   <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-amber-800/50">
-                                    รอลงเลขไมล์
+                                    <AlertCircle className="w-3.5 h-3.5" /> รอลงเลขไมล์
                                   </span>
                                 )}
-                              </div>
-                              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                              </div>                              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1329,12 +1341,12 @@ export default function Dashboard() {
                               </td>
                               <td className="p-2 sm:p-3 text-center">
                                 {b.miles_status === "recorded" ? (
-                                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 border dark:border-emerald-800/50 px-2 py-1 rounded-full inline-block">
-                                    บันทึกแล้ว ({b.total_mile} กม.)
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 border dark:border-emerald-800/50 px-2 py-1 rounded-full inline-flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> บันทึกแล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
-                                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 border dark:border-amber-800/50 px-2 py-1 rounded-full inline-block">
-                                    รอลงไมล์
+                                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 border dark:border-amber-800/50 px-2 py-1 rounded-full inline-flex items-center gap-1">
+                                    <AlertCircle className="w-3.5 h-3.5" /> รอลงไมล์
                                   </span>
                                 )}
                               </td>
@@ -1607,7 +1619,11 @@ export default function Dashboard() {
                       selectedEditTimes.includes(slot),
                     ).join(", ");
                     if (!newTimeSlots)
-                      return alert("กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง");
+                      return showAlert({
+                        title: "แจ้งเตือน",
+                        description: "กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง",
+                        type: "error",
+                      });
 
                     const { data: checkData, error: checkError } =
                       await supabase
@@ -1616,7 +1632,12 @@ export default function Dashboard() {
                         .eq("car_id", editBooking.car_id)
                         .eq("date", editForm.date.toISOString().split("T")[0]);
 
-                    if (checkError) return alert("ไม่สามารถตรวจสอบเวลาว่างได้");
+                    if (checkError)
+                      return showAlert({
+                        title: "เกิดข้อผิดพลาด",
+                        description: "ไม่สามารถตรวจสอบเวลาว่างได้",
+                        type: "error",
+                      });
 
                     const conflict = checkData?.some((b) => {
                       if (b.id === editBooking.id) return false;
@@ -1629,9 +1650,11 @@ export default function Dashboard() {
                     });
 
                     if (conflict)
-                      return alert(
-                        "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
-                      );
+                      return showAlert({
+                        title: "เวลาไม่ว่าง",
+                        description: "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
+                        type: "error",
+                      });
 
                     let updateQuery = supabase
                       .from("bookings")
@@ -1650,7 +1673,11 @@ export default function Dashboard() {
 
                     const { error: bookingError } = await updateQuery;
                     if (bookingError)
-                      return alert("อัปเดตไม่สำเร็จ: " + bookingError.message);
+                      return showAlert({
+                        title: "อัปเดตไม่สำเร็จ",
+                        description: bookingError.message,
+                        type: "error",
+                      });
 
                     if (editStartMile && editEndMile) {
                       const { error: milesError } = await supabase
@@ -1664,9 +1691,11 @@ export default function Dashboard() {
                           { onConflict: "booking_id" },
                         );
                       if (milesError)
-                        return alert(
-                          "ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message,
-                        );
+                        return showAlert({
+                          title: "เกิดข้อผิดพลาด",
+                          description: "ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message,
+                          type: "error",
+                        });
                     }
 
                     // ✅ ส่งแจ้งเตือนแบบขนาน
@@ -1709,7 +1738,11 @@ export default function Dashboard() {
                       }),
                     ]);
 
-                    alert("อัปเดตข้อมูลเรียบร้อย");
+                    showAlert({
+                      title: "สำเร็จ!",
+                      description: "อัปเดตข้อมูลการจองเรียบร้อยแล้ว",
+                      type: "success",
+                    });
                     setEditBooking(null);
                     loadBookings();
                   }}

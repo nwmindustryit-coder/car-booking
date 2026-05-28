@@ -1,20 +1,40 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useAlert } from './ui/alert-provider'
 
 export default function MileModal({ bookingId, onClose }: { bookingId: number, onClose: () => void }) {
+  const { showAlert } = useAlert()
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
 
   const handleSave = async () => {
-    if (!start || !end) return alert('กรอกเลขไมล์ให้ครบ')
-    await supabase.from('miles').insert({
+    if (!start || !end) return showAlert({
+      title: "แจ้งเตือน",
+      description: "กรุณากรอกเลขไมล์ให้ครบถ้วน",
+      type: "error"
+    })
+    
+    const { error } = await supabase.from('miles').insert({
       booking_id: bookingId,
       start_mile: Number(start),
       end_mile: Number(end),
     })
-    alert('บันทึกเลขไมล์เรียบร้อย')
-    onClose()
+
+    if (error) {
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: error.message,
+        type: "error"
+      })
+    } else {
+      showAlert({
+        title: "สำเร็จ!",
+        description: "บันทึกเลขไมล์เรียบร้อยแล้ว",
+        type: "success"
+      })
+      onClose()
+    }
   }
 
   return (
