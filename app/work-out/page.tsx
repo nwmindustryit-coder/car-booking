@@ -93,7 +93,7 @@ export default function WorkOutPage() {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
+    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-28 md:pb-12 transition-colors duration-300">
       <Navbar />
       <main className="pt-24 p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
         
