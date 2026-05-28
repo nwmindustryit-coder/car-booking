@@ -1178,15 +1178,14 @@ export default function Dashboard() {
                               <div className="w-full sm:w-auto flex justify-center sm:justify-start">
                                 {b.miles_status === "recorded" ? (
                                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-emerald-800/50">
-                                    ✅ ลงไมล์แล้ว ({b.total_mile} กม.)
+                                    ลงไมล์แล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
                                   <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 border dark:border-amber-800/50">
-                                    ⚠️ รอลงเลขไมล์
+                                    รอลงเลขไมล์
                                   </span>
                                 )}
                               </div>
-
                               <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
                                 <Button
                                   size="sm"
@@ -1331,11 +1330,11 @@ export default function Dashboard() {
                               <td className="p-2 sm:p-3 text-center">
                                 {b.miles_status === "recorded" ? (
                                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50 dark:bg-emerald-900/30 border dark:border-emerald-800/50 px-2 py-1 rounded-full inline-block">
-                                    ✅ บันทึกแล้ว ({b.total_mile} กม.)
+                                    บันทึกแล้ว ({b.total_mile} กม.)
                                   </span>
                                 ) : (
                                   <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs bg-amber-50 dark:bg-amber-900/30 border dark:border-amber-800/50 px-2 py-1 rounded-full inline-block">
-                                    ⚠️ รอลงไมล์
+                                    รอลงไมล์
                                   </span>
                                 )}
                               </td>
@@ -1710,7 +1709,7 @@ export default function Dashboard() {
                       }),
                     ]);
 
-                    alert("อัปเดตข้อมูลเรียบร้อย ✅");
+                    alert("อัปเดตข้อมูลเรียบร้อย");
                     setEditBooking(null);
                     loadBookings();
                   }}

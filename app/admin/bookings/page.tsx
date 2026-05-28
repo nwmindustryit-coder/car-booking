@@ -649,9 +649,9 @@ export default function AdminBookings() {
                                     }),
                                 ]);
 
-                                alert('อัปเดตข้อมูลเรียบร้อย ✅'); 
-                                setEditBooking(null); 
-                                loadBookings(); 
+                                alert('อัปเดตข้อมูลเรียบร้อย');
+                                setEditBooking(null)
+                                loadBookings()
                             }
                         }} className="space-y-4 pt-2">
                             
