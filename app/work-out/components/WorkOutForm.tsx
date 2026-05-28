@@ -10,6 +10,7 @@ import { User, Briefcase, CalendarDays, MapPin, Sun, Moon, Calculator, Clock, Ba
 import { calculateWorkoutStats } from "@/hooks/useWorkouts";
 import { Workout } from "@/types/index";
 import { supabase } from "@/lib/supabaseClient";
+import { useAlert } from "@/components/ui/alert-provider";
 
 const workoutSchema = z.object({
   employee_name: z.string().min(1, "กรุณากรอกชื่อพนักงาน"),
@@ -33,6 +34,7 @@ interface WorkOutFormProps {
 
 export function WorkOutForm({ userId, initialData, department, employeeName, onSuccess, onCancel }: WorkOutFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showAlert } = useAlert();
 
   const {
     register,
@@ -100,10 +102,18 @@ export function WorkOutForm({ userId, initialData, department, employeeName, onS
 
     setIsSubmitting(false);
     if (!error) {
-      alert(initialData ? "อัปเดตข้อมูลสำเร็จ ✅" : "บันทึกข้อมูลสำเร็จ ✅");
-      onSuccess();
+      showAlert({
+        title: "สำเร็จ!",
+        description: initialData ? "อัปเดตข้อมูลการปฏิบัติงานเรียบร้อยแล้ว" : "บันทึกข้อมูลการปฏิบัติงานเรียบร้อยแล้ว",
+        type: "success",
+        onConfirm: onSuccess
+      });
     } else {
-      alert("เกิดข้อผิดพลาด: " + error.message);
+      showAlert({
+        title: "เกิดข้อผิดพลาด",
+        description: error.message,
+        type: "error"
+      });
     }
   };
 
