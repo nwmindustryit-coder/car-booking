@@ -160,92 +160,112 @@ export default function Navbar() {
             </Button>
           </div>
         </div>
+      </nav>
 
-        {/* ✅ เมนูมือถือ (Mobile Overlay) แบบเทพๆ */}
-        <div className={`
-          sm:hidden fixed inset-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl
-          transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
-          ${menuOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'}
-        `}>
-          <div className="h-full flex flex-col pt-24 pb-8 px-6 overflow-y-auto">
-            
-            {/* User Profile Card */}
-            <div className={`
-              flex items-center gap-4 p-4 mb-8 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800
-              transform transition-all duration-500 delay-100
-              ${menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-8 opacity-0'}
-            `}>
-              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl shadow-inner">
-                 {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div className="overflow-hidden flex-1">
-                <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">{user?.email || 'Loading...'}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{role || 'User'}</p>
-                </div>
+      {/* ✅ เมนูมือถือ (Mobile Overlay) แบบใหม่ - แก้ไขบัคมองไม่เห็นและเพิ่มปุ่มปิด */}
+      <div className={`
+        sm:hidden fixed inset-0 z-[9999] bg-white dark:bg-slate-900
+        transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
+        ${menuOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'}
+      `}>
+        {/* Header ในเมนูมือถือ */}
+        <div className="flex justify-between items-center px-4 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/logo.png" 
+              alt="Logo" 
+              width={32} 
+              height={32} 
+              className="object-contain brightness-0 dark:invert"
+            />
+            <span className="font-extrabold text-lg text-slate-800 dark:text-white tracking-tight">Nawamit</span>
+          </div>
+          <button 
+            onClick={() => setMenuOpen(false)}
+            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+          >
+            <X className="w-7 h-7" />
+          </button>
+        </div>
+
+        <div className="h-full flex flex-col pb-32 px-6 overflow-y-auto">
+          
+          {/* User Profile Card */}
+          <div className={`
+            flex items-center gap-4 p-4 my-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800
+            transform transition-all duration-500 delay-100
+            ${menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-8 opacity-0'}
+          `}>
+            <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl shadow-inner">
+               {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">{user?.email || 'Loading...'}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{role || 'User'}</p>
               </div>
             </div>
+          </div>
 
-            {/* Navigation Links */}
-            <div className="flex flex-col gap-3 flex-1">
-              <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`
-                flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
-                text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-150
-                ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
-              `}>
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-500 dark:text-blue-400"><CalendarDays className="w-5 h-5"/></div>
-                <span className="text-[15px]">ปฏิทินคิวรถส่วนกลาง</span>
-              </Link>
-
-              <Link href="/private-mile" onClick={() => setMenuOpen(false)} className={`
-                flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
-                text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-200
-                ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
-              `}>
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-500 dark:text-emerald-400"><Map className="w-5 h-5"/></div>
-                <span className="text-[15px]">ลงไมล์รถส่วนตัว</span>
-              </Link>
-              
-              <Link href="/work-out" onClick={() => setMenuOpen(false)} className={`
-                flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
-                text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-250
-                ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
-              `}>
-                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-500 dark:text-indigo-400"><Clock className="w-5 h-5"/></div>
-                <span className="text-[15px]">บันทึกเวลาทำงานนอกสถานที่</span>
-              </Link>
-
-              {role === 'admin' && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className={`
-                  flex items-center gap-4 px-5 py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 shadow-sm rounded-2xl
-                  text-amber-800 dark:text-amber-300 font-bold active:scale-95 transition-all duration-300 delay-300
-                  ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
-                `}>
-                  <div className="p-2 bg-amber-100 dark:bg-amber-800/50 rounded-lg text-amber-600 dark:text-amber-400"><Settings className="w-5 h-5"/></div>
-                  <span className="text-[15px]">จัดการระบบ (Admin)</span>
-                </Link>
-              )}
-            </div>
-
-            {/* Bottom Actions */}
-            <div className={`
-              mt-auto pt-6 flex flex-col gap-3
-              transform transition-all duration-500 delay-300
+          {/* Navigation Links */}
+          <div className="flex flex-col gap-3">
+            <Link href="/calendar" onClick={() => setMenuOpen(false)} className={`
+              flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
+              text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-150
               ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
             `}>
-              <button onClick={() => { setMenuOpen(false); setShowChangePassword(true); }} className="flex items-center justify-center gap-2 w-full py-4 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-2xl font-medium active:scale-95 transition-transform">
-                <KeyRound className="w-5 h-5 text-slate-400 dark:text-slate-500"/> เปลี่ยนรหัสผ่าน
-              </button>
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-500 dark:text-blue-400"><CalendarDays className="w-5 h-5"/></div>
+              <span className="text-[15px]">ปฏิทินคิวรถส่วนกลาง</span>
+            </Link>
 
-              <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex items-center justify-center gap-2 w-full py-4 text-white bg-slate-900 dark:bg-red-900/80 rounded-2xl font-bold shadow-lg shadow-slate-200 dark:shadow-none active:scale-95 transition-transform">
-                <LogOut className="w-5 h-5"/> ออกจากระบบ
-              </button>
-            </div>
+            <Link href="/private-mile" onClick={() => setMenuOpen(false)} className={`
+              flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
+              text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-200
+              ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+            `}>
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-500 dark:text-emerald-400"><Map className="w-5 h-5"/></div>
+              <span className="text-[15px]">ลงไมล์รถส่วนตัว</span>
+            </Link>
+            
+            <Link href="/work-out" onClick={() => setMenuOpen(false)} className={`
+              flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-2xl
+              text-slate-700 dark:text-slate-200 font-medium active:scale-95 transition-all duration-300 delay-250
+              ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+            `}>
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-500 dark:text-indigo-400"><Clock className="w-5 h-5"/></div>
+              <span className="text-[15px]">บันทึกเวลาทำงานนอกสถานที่</span>
+            </Link>
 
+            {role === 'admin' && (
+              <Link href="/admin" onClick={() => setMenuOpen(false)} className={`
+                flex items-center gap-4 px-5 py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 shadow-sm rounded-2xl
+                text-amber-800 dark:text-amber-300 font-bold active:scale-95 transition-all duration-300 delay-300
+                ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+              `}>
+                <div className="p-2 bg-amber-100 dark:bg-amber-800/50 rounded-lg text-amber-600 dark:text-amber-400"><Settings className="w-5 h-5"/></div>
+                <span className="text-[15px]">จัดการระบบ (Admin)</span>
+              </Link>
+            )}
           </div>
+
+          {/* Bottom Actions */}
+          <div className={`
+            mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3
+            transform transition-all duration-500 delay-300
+            ${menuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+          `}>
+            <button onClick={() => { setMenuOpen(false); setShowChangePassword(true); }} className="flex items-center justify-center gap-2 w-full py-4 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-2xl font-medium active:scale-95 transition-transform">
+              <KeyRound className="w-5 h-5 text-slate-400 dark:text-slate-500"/> เปลี่ยนรหัสผ่าน
+            </button>
+
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex items-center justify-center gap-2 w-full py-4 text-white bg-slate-900 dark:bg-red-900/80 rounded-2xl font-bold shadow-lg shadow-slate-200 dark:shadow-none active:scale-95 transition-transform">
+              <LogOut className="w-5 h-5"/> ออกจากระบบ
+            </button>
+          </div>
+
         </div>
-      </nav>
+      </div>
 
       {/* ดันเนื้อหาลงมาไม่ให้ถูก Navbar บัง (เพราะตั้งเป็น fixed) */}
       <div className="h-[72px]"></div>
