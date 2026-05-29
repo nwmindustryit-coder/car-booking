@@ -2,8 +2,7 @@ const CACHE_NAME = 'car-booking-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/favicon.ico',
-  '/logo.png',
-  '/globals.css'
+  '/logo.png'
 ];
 
 // Install Event
