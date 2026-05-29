@@ -8,13 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  GaugeIcon,
   EyeIcon,
   Search,
   SquarePen,
@@ -31,18 +24,21 @@ import {
   Filter,
   CheckCircle2,
   AlertCircle,
-  Save,
-  Megaphone,
+  GaugeIcon,
   Rocket,
-  Lightbulb,
+  Star,
 } from "lucide-react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { format, isToday } from "date-fns";
 import { th } from "date-fns/locale";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
 import { useAlert } from "@/components/ui/alert-provider";
+
+// Import Modals
+import DetailModal from "@/components/modals/DetailModal";
+import MileageModal from "@/components/modals/MileageModal";
+import EditBookingModal from "@/components/modals/EditBookingModal";
+import SwapCarModal from "@/components/modals/SwapCarModal";
 
 // ฟังก์ชันเช็กช่วงเวลาปัจจุบัน
 const getCurrentTimeSlot = () => {
@@ -66,43 +62,24 @@ export default function Dashboard() {
 
   const [bookings, setBookings] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
-  const [showDetail, setShowDetail] = useState<any | null>(null);
-  const [startMile, setStartMile] = useState("");
-  const [endMile, setEndMile] = useState("");
-  const [usedMile, setUsedMile] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [editBooking, setEditBooking] = useState<any | null>(null);
-  const [selectedEditTimes, setSelectedEditTimes] = useState<string[]>([]);
-  const [editBookingStatus, setEditBookingStatus] = useState<
-    Record<string, string>
-  >({});
   const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
-  const [editStartMile, setEditStartMile] = useState("");
-  const [editEndMile, setEditEndMile] = useState("");
   const [alerts, setAlerts] = useState<any[]>([]);
   const [carStatuses, setCarStatuses] = useState<any[]>([]);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("all");
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+  // Modal States
+  const [showDetail, setShowDetail] = useState<any | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [editBooking, setEditBooking] = useState<any | null>(null);
+  const [swapBooking, setSwapBooking] = useState<any | null>(null);
 
   // 👑 State โหมดผู้ดูแลระบบ (Admin) จากฐานข้อมูล
   const [isAdmin, setIsAdmin] = useState(false);
 
   // 🌙 State สำหรับ Dark Mode
   const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // State สำหรับระบบสลับรถ (Swap Car)
-  const [swapBooking, setSwapBooking] = useState<any | null>(null);
-  const [swapOptions, setSwapOptions] = useState<any[]>([]);
-  const [selectedNewCar, setSelectedNewCar] = useState<string>("");
-  const [isSwapping, setIsSwapping] = useState(false);
-
-  const [editForm, setEditForm] = useState({
-    driver_name: "",
-    destination: "",
-    reason: "",
-    date: new Date(),
-  });
 
   const router = useRouter();
   const { showAlert } = useAlert();
@@ -141,15 +118,60 @@ export default function Dashboard() {
       .select("car_id, time_slot, driver_name")
       .eq("date", today);
 
+    // ✨ ดึงข้อมูลการบำรุงรักษา
+    const { data: maintenance } = await supabase.from("car_maintenance").select("*");
+    const { data: milesData } = await supabase.from("miles").select("end_mile, bookings!inner(car_id)");
+
+    const maxMilesMap: Record<number, number> = {};
+    if (milesData) {
+      milesData.forEach((m: any) => {
+        const carId = m.bookings?.car_id;
+        if (carId && m.end_mile) {
+          if (!maxMilesMap[carId] || m.end_mile > maxMilesMap[carId]) {
+            maxMilesMap[carId] = m.end_mile;
+          }
+        }
+      });
+    }
+
     if (cars) {
+      const currentSlotIndex = TIME_SLOTS.indexOf(currentSlot);
+
       const statusList = cars.map((car) => {
         const activeBooking = todaysBookings?.find(
           (b) => b.car_id === car.id && b.time_slot.includes(currentSlot),
         );
+
+        // ✨ ค้นหาคิวถัดไปของรถคันนี้
+        const nextCarBooking = todaysBookings
+          ?.filter((b) => b.car_id === car.id)
+          .map((b) => ({ ...b, firstSlotIndex: TIME_SLOTS.indexOf(b.time_slot.split(",")[0].trim()) }))
+          .filter((b) => b.firstSlotIndex > currentSlotIndex)
+          .sort((a, b) => a.firstSlotIndex - b.firstSlotIndex)[0];
+
+        // 🛠️ คำนวณสุขภาพรถ (ปรับให้หลอดตอบสนองตามระยะทางที่เหลือจริง)
+        const m = maintenance?.find((x) => x.car_id === car.id);
+        const currentMile = maxMilesMap[car.id] || 0;
+        let healthPercent = 100;
+        let remainingMile = null;
+
+        if (m && m.next_service_mileage) {
+          const nextService = Number(m.next_service_mileage) || 0;
+          remainingMile = nextService - currentMile;
+          
+          // ใช้เกณฑ์ 10,000 กม. เป็นตัวตั้งฐานของหลอด (มาตรฐานการเข้าศูนย์ทั่วไป)
+          // เพื่อให้ 8,000 กม. ดูเยอะ และ 1,000 กม. ดูน้อยลงตามจริง
+          const SERVICE_WINDOW = 10000; 
+          healthPercent = Math.max(0, Math.min(100, (remainingMile / SERVICE_WINDOW) * 100));
+        }
+
         return {
           ...car,
           isBusy: !!activeBooking,
           currentDriver: activeBooking?.driver_name || null,
+          nextBooking: nextCarBooking || null,
+          healthPercent,
+          remainingMile,
         };
       });
       setCarStatuses(statusList);
@@ -295,28 +317,6 @@ export default function Dashboard() {
     loadAlerts();
   }, []);
 
-  // 4. โหลดข้อมูลเลขไมล์สำหรับหน้าแก้ไข
-  useEffect(() => {
-    if (editBooking) {
-      const loadMiles = async () => {
-        const { data } = await supabase
-          .from("miles")
-          .select("start_mile, end_mile")
-          .eq("booking_id", editBooking.id)
-          .maybeSingle();
-
-        if (data) {
-          setEditStartMile(data.start_mile?.toString() || "");
-          setEditEndMile(data.end_mile?.toString() || "");
-        } else {
-          setEditStartMile("");
-          setEditEndMile("");
-        }
-      };
-      loadMiles();
-    }
-  }, [editBooking]);
-
   const TIME_SLOTS = [
     "ก่อนเวลางาน",
     "08:00-09:00",
@@ -431,85 +431,6 @@ export default function Dashboard() {
     setFilteredBookings(filtered);
   }, [search, bookings]);
 
-  // เช็กว่าช่วงเวลานี้มีคนจองไหม (สำหรับตอนกดแก้ไข)
-  useEffect(() => {
-    const checkBookingAvailability = async () => {
-      if (!editBooking?.car_id || !editForm.date) return;
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("time_slot, driver_name")
-        .eq("car_id", editBooking.car_id)
-        .eq("date", editForm.date.toISOString().split("T")[0]);
-
-      if (error) return;
-
-      const status: Record<string, string> = {};
-      for (const slot of TIME_SLOTS) status[slot] = "ว่าง";
-
-      for (const booking of data || []) {
-        const bookedSlots = booking.time_slot.split(",").map((s) => s.trim());
-        for (const slot of TIME_SLOTS) {
-          if (bookedSlots.includes(slot)) status[slot] = booking.driver_name;
-        }
-      }
-      setEditBookingStatus(status);
-    };
-
-    if (editBooking) checkBookingAvailability();
-  }, [editBooking, editForm.date]);
-
-  useEffect(() => {
-    if (startMile && endMile) {
-      const total = Number(endMile) - Number(startMile);
-      setUsedMile(total >= 0 ? total : 0);
-    } else setUsedMile(null);
-  }, [startMile, endMile]);
-
-  // Save ฟังก์ชันบันทึกเลขไมล์
-  const handleSaveMiles = async () => {
-    if (!startMile || !endMile) {
-      return showAlert({
-        title: "ข้อมูลไม่ครบ",
-        description: "กรุณากรอกเลขไมล์ให้ครบ",
-        type: "warning"
-      });
-    }
-    const total = Number(endMile) - Number(startMile);
-    if (total < 0) {
-      return showAlert({
-        title: "ข้อมูลไม่ถูกต้อง",
-        description: "เลขไมล์สิ้นสุดต้องมากกว่าเลขไมล์เริ่มต้น",
-        type: "warning"
-      });
-    }
-
-    const { error } = await supabase.from("miles").insert({
-      booking_id: selectedBooking.id,
-      start_mile: Number(startMile),
-      end_mile: Number(endMile),
-    });
-
-    if (error) {
-      showAlert({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message,
-        type: "error"
-      });
-    } else {
-      showAlert({
-        title: "บันทึกสำเร็จ",
-        description: `บันทึกเลขไมล์เรียบร้อย (ใช้ไป ${total} กม.)`,
-        type: "success"
-      });
-      setSelectedBooking(null);
-      setStartMile("");
-      setEndMile("");
-      setUsedMile(null);
-      await loadBookings();
-    }
-  };
-
   // 🗑️ ฟังก์ชันลบรายการจอง (รองรับ Admin)
   const handleDeleteBooking = async (booking: any) => {
     showAlert({
@@ -590,97 +511,6 @@ export default function Dashboard() {
       setHasAutoSelected(true);
     }
   }, [availableMonths, hasAutoSelected]);
-
-  // 🔄 ระบบสลับรถ (ดึงข้อมูล)
-  useEffect(() => {
-    const loadSwapOptions = async () => {
-      if (!swapBooking) return;
-
-      const { data: allCars } = await supabase.from("cars").select("*");
-      const { data: bookingsOnDate } = await supabase
-        .from("bookings")
-        .select("id, car_id, time_slot, driver_name")
-        .eq("date", swapBooking.date);
-
-      const swapSlots = swapBooking.time_slot
-        .split(",")
-        .map((s: string) => s.trim());
-
-      const options = allCars
-        ?.filter((car) => car.id !== swapBooking.car_id)
-        .map((car) => {
-          const carBookings =
-            bookingsOnDate?.filter((b) => b.car_id === car.id) || [];
-          const conflicts = carBookings.filter((b) => {
-            const bookedSlots = b.time_slot
-              .split(",")
-              .map((s: string) => s.trim());
-            return bookedSlots.some((slot) => swapSlots.includes(slot));
-          });
-
-          return {
-            ...car,
-            isBooked: conflicts.length > 0,
-            conflictingBookings: conflicts,
-          };
-        });
-
-      setSwapOptions(options || []);
-      setSelectedNewCar("");
-    };
-
-    loadSwapOptions();
-  }, [swapBooking]);
-
-  // 🔄 ระบบสลับรถ (บันทึกข้อมูล)
-  const handleSwapSubmit = async () => {
-    if (!selectedNewCar)
-      return showAlert({
-        title: "แจ้งเตือน",
-        description: "กรุณาเลือกรถที่ต้องการสลับ",
-        type: "error",
-      });
-    setIsSwapping(true);
-
-    const targetCar = swapOptions.find((c) => c.id === selectedNewCar);
-
-    try {
-      if (targetCar?.isBooked) {
-        const conflictIds = targetCar.conflictingBookings.map((b: any) => b.id);
-        const { error: moveOtherError } = await supabase
-          .from("bookings")
-          .update({ car_id: swapBooking.car_id })
-          .in("id", conflictIds);
-        if (moveOtherError) throw moveOtherError;
-      }
-
-      const { error: moveOurError } = await supabase
-        .from("bookings")
-        .update({ car_id: selectedNewCar })
-        .eq("id", swapBooking.id);
-
-      if (moveOurError) throw moveOurError;
-
-      showAlert({
-        title: "สำเร็จ!",
-        description: targetCar?.isBooked
-          ? "สลับรถระหว่างคิวสำเร็จแล้ว!"
-          : "เปลี่ยนรถเรียบร้อยแล้ว!",
-        type: "success"
-      });
-      setSwapBooking(null);
-      await loadBookings();
-      fetchCarStatus();
-    } catch (err: any) {
-      showAlert({
-        title: "เกิดข้อผิดพลาด",
-        description: err.message,
-        type: "error"
-      });
-    } finally {
-      setIsSwapping(false);
-    }
-  };
 
   if (!user) {
     return (
@@ -769,7 +599,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ✨ เปลี่ยนจาก <style jsx> เป็น dangerouslySetInnerHTML เพื่อป้องกันบั๊กใน Next.js App Router */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -960,13 +789,115 @@ export default function Dashboard() {
       <AnnouncementPopup />
       <div className="pt-20 p-4 md:p-6 md:pt-24 pb-28 md:pb-6 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors duration-300">
         <main className="max-w-6xl mx-auto">
+          {/* 🏎️ Quick-View Availability Summary & Personalized Next Trip */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+            {/* 1. สรุปความพร้อม (เดิม) */}
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-700 dark:to-indigo-900 p-5 rounded-2xl shadow-lg border border-blue-400/20 text-white flex items-center justify-between overflow-hidden relative group">
+              <div className="relative z-10">
+                <p className="text-blue-100 text-sm font-medium mb-1">ความพร้อมใช้งานตอนนี้</p>
+                <h3 className="text-3xl font-extrabold flex items-baseline gap-2">
+                  ว่าง {carStatuses.filter(c => !c.isBusy).length} <span className="text-lg font-normal opacity-80">จาก {carStatuses.length} คัน</span>
+                </h3>
+              </div>
+              <div className="bg-white/10 p-3 rounded-xl backdrop-blur-md relative z-10">
+                <Rocket className="w-8 h-8 text-white animate-pulse" />
+              </div>
+              <div className="absolute -right-4 -bottom-4 opacity-10 transform rotate-12 transition-transform group-hover:scale-110">
+                <CarIcon size={120} />
+              </div>
+            </div>
+
+            {/* 2. คิวของคุณ (⭐ Personalized Card) */}
+            {(() => {
+              const myNextTrip = bookings.find(b => 
+                b.user_id === user.id && 
+                b.date === new Date().toLocaleDateString("sv-SE") &&
+                (b.miles_status !== "recorded")
+              );
+              
+              if (myNextTrip) {
+                return (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-2xl shadow-md border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between overflow-hidden relative group animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="relative z-10 w-full">
+                      <p className="text-emerald-600 dark:text-emerald-400 text-sm font-bold mb-1 flex items-center gap-1.5">
+                        <Star className="w-3.5 h-3.5 fill-current" /> คิวของคุณวันนี้
+                      </p>
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-white truncate">
+                        รถทะเบียน: {myNextTrip.cars?.plate}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px]">
+                          {myNextTrip.time_slot.split(",")[0]}
+                        </Badge>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">ไป {myNextTrip.destination}</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setSelectedBooking(myNextTrip)}
+                        className="mt-3 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white h-8 px-4 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5"
+                      >
+                        <GaugeIcon className="w-3.5 h-3.5" /> บันทึกเลขไมล์ด่วน
+                      </Button>
+                    </div>
+                    <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12">
+                      <User size={120} className="text-emerald-600" />
+                    </div>
+                  </div>
+                );
+              }
+
+              // ถ้าไม่มีคิวของตัวเอง ให้แสดง "คิวถัดไปของทุกคน" แทน (เหมือนเดิม)
+              return (
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-between overflow-hidden relative group">
+                  <div className="relative z-10 w-full">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> คิวถัดไปที่กำลังจะมาถึง
+                    </p>
+                    {carStatuses.some(c => c.nextBooking) ? (
+                      <div className="flex flex-col">
+                        {(() => {
+                          const nextB = carStatuses
+                            .filter(c => c.nextBooking)
+                            .map(c => ({ ...c.nextBooking, carPlate: c.plate }))
+                            .sort((a, b) => a.firstSlotIndex - b.firstSlotIndex)[0];
+                          return (
+                            <>
+                              <h3 className="text-xl font-bold text-slate-800 dark:text-white truncate">
+                                {nextB.driver_name} <span className="text-sm font-normal text-slate-500 ml-1">({nextB.carPlate})</span>
+                              </h3>
+                              <p className="text-blue-600 dark:text-blue-400 font-bold text-sm mt-0.5">
+                                {nextB.time_slot.split(",")[0]} 
+                                <span className="text-slate-400 font-normal ml-2">ไป {nextB.destination}</span>
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <h3 className="text-xl font-bold text-slate-400 dark:text-slate-600 italic">ไม่มีรายการจองถัดไป</h3>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 3. ปุ่มนำทางด่วน / หรือสถิติเล็กๆ */}
+            <div className="hidden lg:flex bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 items-center justify-center group hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                 onClick={() => router.push("/calendar")}>
+              <div className="text-center">
+                <CalendarDays className="w-8 h-8 text-blue-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">ดูตารางคิวทั้งเดือน</p>
+                <p className="text-[10px] text-slate-400">ตรวจสอบความว่างของรถล่วงหน้า</p>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <CarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 สถานะรถ (Real-time)
               </h2>
-              {/* ✨ แสดงป้ายแอดมิน เพื่อความมั่นใจว่าระบบเห็นสิทธิ์แล้ว */}
               {isAdmin && (
                 <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700">
                   <ShieldCheck className="w-4 h-4 mr-1" />
@@ -980,35 +911,59 @@ export default function Dashboard() {
                 {carStatuses.map((car) => (
                   <div
                     key={car.id}
-                    className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between transition-hover hover:border-blue-200 dark:hover:border-blue-500 hover:shadow-md"
+                    className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col transition-hover hover:border-blue-200 dark:hover:border-blue-500 hover:shadow-md"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
-                        <CarIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
+                          <CarIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 dark:text-white text-sm sm:text-base">
+                            {car.plate}
+                          </p>
+                          <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                            {car.brand || "รถส่วนกลาง"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-white text-sm sm:text-base">
-                          {car.plate}
-                        </p>
-                        <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                          {car.brand || "รถส่วนกลาง"}
-                        </p>
+                      {car.isBusy ? (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800 hover:bg-amber-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                          </span>
+                          ไม่ว่าง ({car.currentDriver})
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 hover:bg-emerald-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          ว่าง
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* 🛠️ Maintenance Health Indicator */}
+                    <div className="mt-1 pt-3 border-t border-slate-50 dark:border-slate-700/50">
+                      <div className="flex justify-between items-end mb-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">สุขภาพรถยนต์</span>
+                        <span className={`text-xs font-bold ${
+                          car.healthPercent > 20 ? 'text-emerald-600 dark:text-emerald-400' : 
+                          car.healthPercent > 5 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {car.remainingMile !== null ? `อีก ${car.remainingMile.toLocaleString()} กม.` : 'พร้อมใช้งาน'}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-1000 ${
+                            car.healthPercent > 20 ? 'bg-emerald-500' : 
+                            car.healthPercent > 5 ? 'bg-amber-500' : 'bg-red-500 animate-pulse'
+                          }`}
+                          style={{ width: `${car.healthPercent}%` }}
+                        ></div>
                       </div>
                     </div>
-                    {car.isBusy ? (
-                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800 hover:bg-amber-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                        </span>
-                        ไม่ว่าง ({car.currentDriver})
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 hover:bg-emerald-100 gap-1.5 py-1 px-2.5 font-medium whitespace-nowrap">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        ว่าง
-                      </Badge>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1025,7 +980,6 @@ export default function Dashboard() {
             </h1>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              {/* 🌙 ปุ่ม Toggle Dark Mode */}
               <Button
                 onClick={toggleTheme}
                 variant="outline"
@@ -1122,12 +1076,11 @@ export default function Dashboard() {
                 const canManageDay =
                   isAdmin || group.some((b) => b.user_id === user.id);
 
-                // 🌙 ✨ แก้ไขจุดนี้: ปรับสีแถบวันที่ให้สว่างขึ้นใน Dark Mode เพื่อให้ Contrast ชัดเจน ตัดกับพื้นหลัง slate-800
                 const bgColor = isToday(d)
-                  ? "bg-green-600 dark:bg-emerald-600" // สีเขียวสว่างสำหรับวันนี้
+                  ? "bg-green-600 dark:bg-emerald-600"
                   : isEvenMonth
-                    ? "bg-gray-700 dark:bg-slate-600" // ปรับให้สว่างขึ้นเป็น slate-600
-                    : "bg-gray-600 dark:bg-slate-500"; // ปรับให้สว่างขึ้นเป็น slate-500
+                    ? "bg-gray-700 dark:bg-slate-600"
+                    : "bg-gray-600 dark:bg-slate-500";
 
                 return (
                   <div
@@ -1149,9 +1102,6 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* ============================================================== */}
-                    {/* 📱 1. สำหรับหน้าจอมือถือ (Mobile View - Card Layout) */}
-                    {/* ============================================================== */}
                     <div className="block lg:hidden bg-slate-50/50 dark:bg-slate-900/50 p-2 space-y-3 transition-colors">
                       {group.map((b: any) => (
                         <div
@@ -1187,11 +1137,6 @@ export default function Dashboard() {
                                   {b.destination}
                                 </span>
                               </div>
-                              {b.reason && (
-                                <div className="pl-6 text-xs text-slate-400 dark:text-slate-500">
-                                  เหตุผล: {b.reason}
-                                </div>
-                              )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-700 gap-3">
@@ -1205,30 +1150,17 @@ export default function Dashboard() {
                                     <AlertCircle className="w-3.5 h-3.5" /> รอลงเลขไมล์
                                   </span>
                                 )}
-                              </div>                              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                              </div>
+                              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="h-9 px-3 rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 shadow-sm"
-                                  onClick={async () => {
-                                    const { data: milesData } = await supabase
-                                      .from("miles")
-                                      .select(
-                                        "start_mile, end_mile, total_mile",
-                                      )
-                                      .eq("booking_id", b.id)
-                                      .limit(1)
-                                      .maybeSingle();
-                                    setShowDetail({
-                                      ...b,
-                                      miles: milesData || null,
-                                    });
-                                  }}
+                                  onClick={() => setShowDetail(b)}
                                 >
                                   <EyeIcon className="w-4 h-4" />
                                 </Button>
 
-                                {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในมือถือ ✨ */}
                                 <Button
                                   size="sm"
                                   disabled={b.miles_status === "recorded"}
@@ -1249,20 +1181,7 @@ export default function Dashboard() {
                                         size="sm"
                                         variant="ghost"
                                         className="h-9 px-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg ml-1"
-                                        onClick={() => {
-                                          setEditForm({
-                                            driver_name: b.driver_name,
-                                            destination: b.destination,
-                                            reason: b.reason,
-                                            date: new Date(b.date),
-                                          });
-                                          setSelectedEditTimes(
-                                            b.time_slot
-                                              .split(",")
-                                              .map((s: string) => s.trim()),
-                                          );
-                                          setEditBooking(b);
-                                        }}
+                                        onClick={() => setEditBooking(b)}
                                       >
                                         <SquarePen className="w-4 h-4" />
                                       </Button>
@@ -1295,9 +1214,6 @@ export default function Dashboard() {
                       ))}
                     </div>
 
-                    {/* ============================================================== */}
-                    {/* 💻 2. สำหรับหน้าจอคอมพิวเตอร์/แท็บเล็ต (Desktop View - Table Layout) */}
-                    {/* ============================================================== */}
                     <div className="hidden lg:block overflow-x-auto">
                       <table className="w-full text-xs sm:text-sm min-w-[700px]">
                         <thead className="bg-blue-100 dark:bg-slate-700 text-blue-800 dark:text-blue-200 border-b dark:border-slate-600 transition-colors">
@@ -1362,26 +1278,12 @@ export default function Dashboard() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      const { data: milesData } = await supabase
-                                        .from("miles")
-                                        .select(
-                                          "start_mile, end_mile, total_mile",
-                                        )
-                                        .eq("booking_id", b.id)
-                                        .limit(1)
-                                        .maybeSingle();
-                                      setShowDetail({
-                                        ...b,
-                                        miles: milesData || null,
-                                      });
-                                    }}
+                                    onClick={() => setShowDetail(b)}
                                     className="h-8 px-3 rounded-lg border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 transition-all duration-200 shadow-sm flex items-center"
                                   >
                                     <EyeIcon className="w-4 h-4 mr-1.5 text-blue-500 dark:text-blue-400" />{" "}
                                     ดู
                                   </Button>
-                                  {/* ✨ ปุ่มไมล์ปลดล็อกให้ทุกคนกดได้ในคอมพิวเตอร์ ✨ */}
                                   <Button
                                     size="sm"
                                     disabled={b.miles_status === "recorded"}
@@ -1408,20 +1310,7 @@ export default function Dashboard() {
                                         size="sm"
                                         variant="ghost"
                                         title="แก้ไขข้อมูล"
-                                        onClick={() => {
-                                          setEditForm({
-                                            driver_name: b.driver_name,
-                                            destination: b.destination,
-                                            reason: b.reason,
-                                            date: new Date(b.date),
-                                          });
-                                          setSelectedEditTimes(
-                                            b.time_slot
-                                              .split(",")
-                                              .map((s: string) => s.trim()),
-                                          );
-                                          setEditBooking(b);
-                                        }}
+                                        onClick={() => setEditBooking(b)}
                                         className="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 h-8 px-2"
                                       >
                                         <SquarePen className="w-4 h-4" />
@@ -1462,563 +1351,45 @@ export default function Dashboard() {
               })}
           </div>
 
-          {/* 🌟 Modal 1: Dialog แสดงรายละเอียด */}
-          <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-            <DialogContent className="w-[95vw] sm:max-w-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
-              <DialogHeader>
-                <DialogTitle className="dark:text-white">
-                  รายละเอียดการจอง
-                </DialogTitle>
-              </DialogHeader>
-              {showDetail && (
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <b>อีเมลผู้จอง:</b> {showDetail.user_name}
-                  </p>
-                  <p>
-                    <b>ชื่อผู้ขับ:</b> {showDetail.driver_name}
-                  </p>
-                  <p>
-                    <b>ทะเบียนรถ:</b> {showDetail.cars?.plate}
-                  </p>
-                  <p>
-                    <b>วันที่:</b> {showDetail.date}
-                  </p>
-                  <p>
-                    <b>ช่วงเวลา:</b> {showDetail.time_slot}
-                  </p>
-                  <p>
-                    <b>สถานที่:</b> {showDetail.destination}
-                  </p>
-                  <p>
-                    <b>เหตุผล:</b> {showDetail.reason}
-                  </p>
+          {/* Modals */}
+          <DetailModal
+            isOpen={!!showDetail}
+            onClose={() => setShowDetail(null)}
+            booking={showDetail}
+          />
 
-                  {showDetail.miles ? (
-                    <div className="pt-2 border-t dark:border-slate-700 mt-2">
-                      <p>
-                        <b>เลขไมล์เริ่มต้น:</b> {showDetail.miles.start_mile}
-                      </p>
-                      <p>
-                        <b>เลขไมล์สิ้นสุด:</b> {showDetail.miles.end_mile}
-                      </p>
-                      <p className="text-blue-700 dark:text-blue-400 font-semibold flex items-center gap-2">
-                        <CarIcon className="w-4 h-4" />
-                        ใช้ไปทั้งหมด{" "}
-                        {showDetail.miles.total_mile ??
-                          showDetail.miles.end_mile -
-                            showDetail.miles.start_mile}{" "}
-                        กม.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="italic text-gray-400 dark:text-slate-500 pt-2 border-t dark:border-slate-700 mt-2">
-                      ยังไม่ได้บันทึกเลขไมล์
-                    </p>
-                  )}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          <MileageModal
+            isOpen={!!selectedBooking}
+            onClose={() => setSelectedBooking(null)}
+            booking={selectedBooking}
+            onSuccess={async () => {
+              await loadBookings();
+              fetchCarStatus();
+            }}
+          />
 
-          {/* 🌟 Modal 2: Dialog บันทึกเลขไมล์ */}
-          <Dialog
-            open={!!selectedBooking}
-            onOpenChange={() => setSelectedBooking(null)}
-          >
-            <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl dark:bg-slate-800 dark:border-slate-700">
-              <DialogHeader>
-                <DialogTitle className="text-xl text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <GaugeIcon className="w-5 h-5" />
-                  บันทึกเลขไมล์
-                </DialogTitle>
-              </DialogHeader>
-              {selectedBooking && (
-                <div className="space-y-4 pt-2">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm">
-                    <p className="dark:text-slate-300">
-                      รถทะเบียน:{" "}
-                      <b className="text-blue-600 dark:text-blue-400">
-                        {selectedBooking.cars?.plate}
-                      </b>
-                    </p>
-                    <p className="dark:text-slate-300">
-                      ผู้ขับ:{" "}
-                      <b className="text-slate-700 dark:text-slate-200">
-                        {selectedBooking.driver_name}
-                      </b>
-                    </p>
-                  </div>
+          <EditBookingModal
+            isOpen={!!editBooking}
+            onClose={() => setEditBooking(null)}
+            booking={editBooking}
+            isAdmin={isAdmin}
+            user={user}
+            onSuccess={async () => {
+              await loadBookings();
+              fetchCarStatus();
+            }}
+          />
 
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
-                        เลขไมล์เริ่มต้น
-                      </label>
-                      <Input
-                        type="number"
-                        className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                        placeholder="กรอกเลขไมล์ตอนเริ่ม..."
-                        value={startMile}
-                        onChange={(e) => setStartMile(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
-                        เลขไมล์สิ้นสุด
-                      </label>
-                      <Input
-                        type="number"
-                        className="h-12 text-lg font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                        placeholder="กรอกเลขไมล์ตอนจบ..."
-                        value={endMile}
-                        onChange={(e) => setEndMile(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {usedMile !== null && (
-                    <div
-                      className={`p-3 rounded-xl border text-center ${usedMile < 0 ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800"}`}
-                    >
-                      <p
-                        className={`text-sm ${usedMile < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}
-                      >
-                        ระยะทางที่ขับขี่รวม:{" "}
-                        <span className="text-xl font-bold">{usedMile}</span>{" "}
-                        กม.
-                      </p>
-                    </div>
-                  )}
-
-                  <Button
-                    className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl text-white flex items-center justify-center gap-2"
-                    onClick={handleSaveMiles}
-                  >
-                    <Save className="w-5 h-5" /> ยืนยันการบันทึก
-                  </Button>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          {/* 🌟 Modal 3: Dialog แก้ไขการจอง */}
-          <Dialog
-            open={!!editBooking}
-            onOpenChange={() => setEditBooking(null)}
-          >
-            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 transition-colors">
-              <DialogHeader>
-                <DialogTitle className="dark:text-white flex items-center">
-                  แก้ไขการจอง{" "}
-                  {isAdmin && (
-                    <Badge className="ml-2 bg-indigo-600 dark:bg-indigo-500">
-                      Admin Mode
-                    </Badge>
-                  )}
-                </DialogTitle>
-              </DialogHeader>
-
-              {editBooking && (
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const newTimeSlots = TIME_SLOTS.filter((slot) =>
-                      selectedEditTimes.includes(slot),
-                    ).join(", ");
-                    if (!newTimeSlots)
-                      return showAlert({
-                        title: "แจ้งเตือน",
-                        description: "กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง",
-                        type: "error",
-                      });
-
-                    const { data: checkData, error: checkError } =
-                      await supabase
-                        .from("bookings")
-                        .select("id, time_slot")
-                        .eq("car_id", editBooking.car_id)
-                        .eq("date", editForm.date.toISOString().split("T")[0]);
-
-                    if (checkError)
-                      return showAlert({
-                        title: "เกิดข้อผิดพลาด",
-                        description: "ไม่สามารถตรวจสอบเวลาว่างได้",
-                        type: "error",
-                      });
-
-                    const conflict = checkData?.some((b) => {
-                      if (b.id === editBooking.id) return false;
-                      const booked = b.time_slot
-                        .split(",")
-                        .map((s: string) => s.trim());
-                      return booked.some((slot: string) =>
-                        selectedEditTimes.includes(slot),
-                      );
-                    });
-
-                    if (conflict)
-                      return showAlert({
-                        title: "เวลาไม่ว่าง",
-                        description: "บางช่วงเวลาที่เลือกถูกจองแล้ว กรุณาเลือกเวลาใหม่",
-                        type: "error",
-                      });
-
-                    let updateQuery = supabase
-                      .from("bookings")
-                      .update({
-                        driver_name: editForm.driver_name,
-                        destination: editForm.destination,
-                        reason: editForm.reason,
-                        time_slot: newTimeSlots,
-                        date: editForm.date.toLocaleDateString("sv-SE"),
-                      })
-                      .eq("id", editBooking.id);
-
-                    if (!isAdmin) {
-                      updateQuery = updateQuery.eq("user_id", user.id);
-                    }
-
-                    const { error: bookingError } = await updateQuery;
-                    if (bookingError)
-                      return showAlert({
-                        title: "อัปเดตไม่สำเร็จ",
-                        description: bookingError.message,
-                        type: "error",
-                      });
-
-                    if (editStartMile && editEndMile) {
-                      const { error: milesError } = await supabase
-                        .from("miles")
-                        .upsert(
-                          {
-                            booking_id: editBooking.id,
-                            start_mile: Number(editStartMile),
-                            end_mile: Number(editEndMile),
-                          },
-                          { onConflict: "booking_id" },
-                        );
-                      if (milesError)
-                        return showAlert({
-                          title: "เกิดข้อผิดพลาด",
-                          description: "ไม่สามารถอัปเดตเลขไมล์ได้: " + milesError.message,
-                          type: "error",
-                        });
-                    }
-
-                    // ✅ ส่งแจ้งเตือนแบบขนาน
-                    await Promise.allSettled([
-                      fetch("/api/line/notify-edit", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          user_name: user.email,
-                          driver_name: editForm.driver_name,
-                          destination: editForm.destination,
-                          time_slot: newTimeSlots,
-                          date: editForm.date.toLocaleDateString("sv-SE"),
-                          car_plate: editBooking.cars?.plate || "",
-                          reason: editForm.reason,
-                          old_driver_name: editBooking.driver_name,
-                          old_destination: editBooking.destination,
-                          old_time_slot: editBooking.time_slot,
-                          old_date: editBooking.date,
-                          old_reason: editBooking.reason,
-                        }),
-                      }),
-                      fetch("/api/telegram/notify-edit", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          user_name: user.email,
-                          driver_name: editForm.driver_name,
-                          destination: editForm.destination,
-                          time_slot: newTimeSlots,
-                          date: editForm.date.toLocaleDateString("sv-SE"),
-                          car_plate: editBooking.cars?.plate || "",
-                          reason: editForm.reason,
-                          old_driver_name: editBooking.driver_name,
-                          old_destination: editBooking.destination,
-                          old_time_slot: editBooking.time_slot,
-                          old_date: editBooking.date,
-                          old_reason: editBooking.reason,
-                        }),
-                      }),
-                    ]);
-
-                    showAlert({
-                      title: "สำเร็จ!",
-                      description: "อัปเดตข้อมูลการจองเรียบร้อยแล้ว",
-                      type: "success",
-                    });
-                    setEditBooking(null);
-                    loadBookings();
-                  }}
-                  className="space-y-3 pt-2"
-                >
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium dark:text-slate-300">
-                      ชื่อผู้ขับ
-                    </label>
-                    <Input
-                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                      value={editForm.driver_name}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          driver_name: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium dark:text-slate-300">
-                      สถานที่
-                    </label>
-                    <Input
-                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                      value={editForm.destination}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          destination: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium dark:text-slate-300">
-                      เหตุผล
-                    </label>
-                    <Input
-                      className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                      value={editForm.reason}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, reason: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="border-t dark:border-slate-700 pt-3 space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium dark:text-slate-300">
-                        เลขไมล์เริ่มต้น
-                      </label>
-                      <Input
-                        type="number"
-                        className="font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                        value={editStartMile}
-                        onChange={(e) => setEditStartMile(e.target.value)}
-                        placeholder="เลขไมล์เริ่มต้น"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium dark:text-slate-300">
-                        เลขไมล์สิ้นสุด
-                      </label>
-                      <Input
-                        type="number"
-                        className="font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
-                        value={editEndMile}
-                        onChange={(e) => setEditEndMile(e.target.value)}
-                        placeholder="เลขไมล์สิ้นสุด"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium dark:text-slate-300">
-                      วันที่
-                    </label>
-                    <DatePicker
-                      selected={editForm.date}
-                      onChange={(d: Date | null) =>
-                        d && setEditForm({ ...editForm, date: d })
-                      }
-                      dateFormat="dd/MM/yyyy"
-                      className="border border-slate-200 dark:border-slate-600 rounded-md p-2 w-full bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium dark:text-slate-300">
-                      ช่วงเวลาที่ต้องการแก้ไข
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {TIME_SLOTS.map((slot) => {
-                        const isBooked =
-                          editBookingStatus[slot] &&
-                          editBookingStatus[slot] !== "ว่าง";
-                        const bookedBy = editBookingStatus[slot];
-                        const isSelected = selectedEditTimes.includes(slot);
-                        return (
-                          <Button
-                            key={slot}
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            onClick={() => {
-                              if (
-                                !isBooked ||
-                                bookedBy === editForm.driver_name
-                              ) {
-                                setSelectedEditTimes((prev) =>
-                                  prev.includes(slot)
-                                    ? prev.filter((s) => s !== slot)
-                                    : [...prev, slot],
-                                );
-                              }
-                            }}
-                            disabled={
-                              isBooked && bookedBy !== editForm.driver_name
-                            }
-                            className={`flex items-center justify-center gap-1 text-xs sm:text-sm ${
-                              isSelected
-                                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:bg-blue-500"
-                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
-                            }`}
-                          >
-                            <span className="truncate">{slot}</span>
-                            {isBooked ? (
-                              <Badge className="ml-1 bg-red-500 dark:bg-red-900/80 text-white">
-                                {bookedBy}
-                              </Badge>
-                            ) : (
-                              <Badge className="ml-1 bg-emerald-500 dark:bg-emerald-900/80 text-white">
-                                ว่าง
-                              </Badge>
-                            )}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white mt-4 flex items-center justify-center gap-2"
-                  >
-                    <Save className="w-4 h-4" /> บันทึกการแก้ไข
-                  </Button>
-                </form>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          {/* 🌟 Modal 4: Dialog สลับรถยนต์ (Swap Car) */}
-          <Dialog
-            open={!!swapBooking}
-            onOpenChange={() => setSwapBooking(null)}
-          >
-            <DialogContent className="w-[95vw] sm:max-w-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
-                  <ArrowRightLeft className="w-5 h-5" /> สลับรถ / สลับคิว{" "}
-                  {isAdmin && (
-                    <Badge className="bg-indigo-600 text-xs ml-2">
-                      Admin Mode
-                    </Badge>
-                  )}
-                </DialogTitle>
-              </DialogHeader>
-
-              {swapBooking && (
-                <div className="space-y-4 pt-4">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-sm space-y-1">
-                    <p>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        ผู้ขับ:
-                      </span>{" "}
-                      <b className="dark:text-white">
-                        {swapBooking.driver_name}
-                      </b>
-                    </p>
-                    <p>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        วันที่:
-                      </span>{" "}
-                      <b className="dark:text-white">{swapBooking.date}</b>
-                    </p>
-                    <p>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        ช่วงเวลา:
-                      </span>{" "}
-                      <b className="dark:text-white">
-                        {mergeTimeSlots(swapBooking.time_slot)}
-                      </b>
-                    </p>
-                    <p>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        รถคันเดิม:
-                      </span>{" "}
-                      <Badge
-                        variant="outline"
-                        className="ml-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 dark:border-slate-600"
-                      >
-                        {swapBooking.cars?.plate}
-                      </Badge>
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                      เลือกรถคันใหม่ที่ต้องการสลับ
-                    </label>
-                    {swapOptions.length > 0 ? (
-                      <>
-                        <select
-                          className="w-full h-11 px-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 dark:text-white"
-                          value={selectedNewCar}
-                          onChange={(e) => setSelectedNewCar(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            -- คลิกลูกศรเพื่อเลือกรถ --
-                          </option>
-                          {swapOptions.map((car) => (
-                            <option key={car.id} value={car.id}>
-                              {car.plate}{" "}
-                              {car.isBooked
-                                ? `(สลับคิวกับ: ${car.conflictingBookings.map((b: any) => b.driver_name).join(", ")})`
-                                : "(ว่างไม่มีคิว)"}
-                            </option>
-                          ))}
-                        </select>
-
-                        {selectedNewCar &&
-                          swapOptions.find((c) => c.id === selectedNewCar)
-                            ?.isBooked && (
-                            <div className="p-3 mt-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 text-sm flex items-start gap-2">
-                              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                              <span>
-                                <b>ระบบจะทำการสลับคิว:</b> ผู้ขับรถคันนี้
-                                จะถูกย้ายมาขับรถ{" "}
-                                <b className="dark:text-white">
-                                  {swapBooking.cars?.plate}
-                                </b>{" "}
-                                แทนอัตโนมัติ
-                              </span>
-                            </div>
-                          )}
-                      </>
-                    ) : (
-                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-center">
-                        ไม่มีรถในระบบให้สลับ
-                      </div>
-                    )}
-                  </div>
-
-                  <Button
-                    onClick={handleSwapSubmit}
-                    disabled={!selectedNewCar || isSwapping}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-xl h-11 shadow-sm transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {isSwapping ? "กำลังดำเนินการ..." : "ยืนยันการสลับรถ"}
-                  </Button>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          <SwapCarModal
+            isOpen={!!swapBooking}
+            onClose={() => setSwapBooking(null)}
+            booking={swapBooking}
+            isAdmin={isAdmin}
+            onSuccess={async () => {
+              await loadBookings();
+              fetchCarStatus();
+            }}
+          />
         </main>
       </div>
     </>

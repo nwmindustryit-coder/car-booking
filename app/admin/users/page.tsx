@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activity, ShieldCheck, User, Sun, Moon, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminUser } from '@/types/index'
+import { userSchema } from '@/lib/schemas'
 
 import { useAlert } from '@/components/ui/alert-provider'
 
@@ -68,6 +69,16 @@ export default function AdminUsers() {
     // Check เพิ่มผู้ใช้ใหม่
     const addUser = async (e: FormEvent) => {
         e.preventDefault()
+
+        const validation = userSchema.safeParse({ email, password, role, department })
+        if (!validation.success) {
+            return showAlert({
+                title: "ข้อมูลไม่ถูกต้อง",
+                description: validation.error.errors[0].message,
+                type: "warning"
+            })
+        }
+
         setLoading(true)
         const res = await fetch('/api/admin/create-user', {
             method: 'POST',
@@ -141,6 +152,21 @@ export default function AdminUsers() {
     // Check บันทึกการแก้ไข
     const handleEditSave = async () => {
         if (!selectedUser) return
+
+        const validation = userSchema.safeParse({ 
+            email: editEmail, 
+            password: editPassword, 
+            role: editRole, 
+            department: editDepartment 
+        })
+        if (!validation.success) {
+            return showAlert({
+                title: "ข้อมูลไม่ถูกต้อง",
+                description: validation.error.errors[0].message,
+                type: "warning"
+            })
+        }
+
         const res = await fetch('/api/admin/update-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

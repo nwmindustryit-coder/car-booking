@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useAlert } from "@/components/ui/alert-provider";
+import { bookingSchema } from "@/lib/schemas";
 
 const TIME_SLOTS = [
   "ก่อนเวลางาน",
@@ -129,25 +130,25 @@ export default function BookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!date) {
-      return showAlert({
-        title: "แจ้งเตือน",
-        description: "กรุณาเลือกวันที่ก่อนทำรายการ",
-        type: "warning"
-      });
-    }
-    if (!form.car_id || selectedTimes.length === 0) {
+
+    const validation = bookingSchema.safeParse({
+      ...form,
+      date: date,
+      time_slot: selectedTimes,
+    });
+
+    if (!validation.success) {
       return showAlert({
         title: "ข้อมูลไม่ครบ",
-        description: "กรุณาเลือกรถและช่วงเวลาอย่างน้อย 1 ช่วง",
-        type: "warning"
+        description: validation.error.errors[0].message,
+        type: "warning",
       });
     }
 
     setIsSubmitting(true);
 
     try {
-      const formattedDate = format(date, "yyyy-MM-dd");
+      const formattedDate = format(date!, "yyyy-MM-dd");
       
       const { data: checkData, error: checkError } = await supabase
         .from("bookings")
@@ -251,7 +252,6 @@ export default function BookingPage() {
   }
 
   return (
-    // ✨ แก้ไขสีพื้นหลังให้เป็นทึบเหมือนหน้าอื่น (ลบ /50 ออกจากฝั่ง dark)
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-12 transition-colors duration-300">
       <Navbar />
       <main className="pt-24 p-3 sm:p-6 max-w-3xl mx-auto">

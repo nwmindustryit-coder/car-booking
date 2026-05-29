@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { userSchema } from '@/lib/schemas'
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! // ใช้ service role key
@@ -8,7 +10,15 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { id, email, password, role, department } = await req.json()
+    const body = await req.json()
+    const { id, email, password, role, department } = body
+
+    // ✅ Server-side Validation
+    const validation = userSchema.safeParse({ email, password, role, department })
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 })
+    }
+...
 
     // ✅ อัปเดตใน auth.users (รหัสผ่าน + email)
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
