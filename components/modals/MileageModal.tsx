@@ -58,7 +58,7 @@ export default function MileageModal({
     if (!result.success) {
       return showAlert({
         title: "ข้อมูลไม่ถูกต้อง",
-        description: result.error.errors[0].message,
+        description: result.error.issues[0].message,
         type: "warning",
       });
     }
