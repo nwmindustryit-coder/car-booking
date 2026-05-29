@@ -74,7 +74,7 @@ export default function AdminUsers() {
         if (!validation.success) {
             return showAlert({
                 title: "ข้อมูลไม่ถูกต้อง",
-                description: validation.error.errors[0].message,
+                description: validation.error.issues[0].message,
                 type: "warning"
             })
         }
@@ -162,7 +162,7 @@ export default function AdminUsers() {
         if (!validation.success) {
             return showAlert({
                 title: "ข้อมูลไม่ถูกต้อง",
-                description: validation.error.errors[0].message,
+                description: validation.error.issues[0].message,
                 type: "warning"
             })
         }
