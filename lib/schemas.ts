@@ -4,20 +4,18 @@ export const bookingSchema = z.object({
   driver_name: z.string().min(1, "กรุณากรอกชื่อผู้ขับ"),
   destination: z.string().min(1, "กรุณากรอกสถานที่"),
   reason: z.string().min(1, "กรุณากรอกเหตุผล"),
-  date: z.any().refine((val) => val instanceof Date && !isNaN(val.getTime()), {
-    message: "กรุณาเลือกวันที่",
-  }),
+  date: z.date({ message: "กรุณาเลือกวันที่" }),
   time_slot: z.array(z.string()).min(1, "กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง"),
 });
 
 export const mileSchema = z.object({
   start_mile: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
-    z.number({ required_error: "กรุณากรอกเลขไมล์เริ่มต้น" }).min(0, "เลขไมล์ต้องไม่ติดลบ")
+    z.number({ message: "กรุณากรอกเลขไมล์เริ่มต้น" }).min(0, "เลขไมล์ต้องไม่ติดลบ")
   ),
   end_mile: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
-    z.number({ required_error: "กรุณากรอกเลขไมล์สิ้นสุด" }).min(0, "เลขไมล์ต้องไม่ติดลบ")
+    z.number({ message: "กรุณากรอกเลขไมล์สิ้นสุด" }).min(0, "เลขไมล์ต้องไม่ติดลบ")
   ),
 }).refine((data) => data.end_mile >= data.start_mile, {
   message: "เลขไมล์สิ้นสุดต้องมากกว่าหรือเท่ากับเลขไมล์เริ่มต้น",
