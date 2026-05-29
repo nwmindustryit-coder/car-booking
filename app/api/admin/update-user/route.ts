@@ -18,7 +18,6 @@ export async function POST(req: Request) {
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 })
     }
-...
 
     // ✅ อัปเดตใน auth.users (รหัสผ่าน + email)
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
