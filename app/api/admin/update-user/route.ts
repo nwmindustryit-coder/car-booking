@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     // ✅ Server-side Validation
     const validation = userSchema.safeParse({ email, password, role, department })
     if (!validation.success) {
-      return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 })
     }
 
     // ✅ อัปเดตใน auth.users (รหัสผ่าน + email)
