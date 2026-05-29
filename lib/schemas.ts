@@ -5,8 +5,12 @@ export const bookingSchema = z.object({
   destination: z.string().min(1, "กรุณากรอกสถานที่"),
   reason: z.string().min(1, "กรุณากรอกเหตุผล"),
   date: z.date({
-    required_error: "กรุณาเลือกวันที่",
-    invalid_type_error: "รูปแบบวันที่ไม่ถูกต้อง",
+    errorMap: (issue, ctx) => {
+      if (issue.code === z.ZodIssueCode.invalid_type && issue.received === 'null') {
+        return { message: "กรุณาเลือกวันที่" };
+      }
+      return { message: ctx.defaultError };
+    }
   }),
   time_slot: z.array(z.string()).min(1, "กรุณาเลือกช่วงเวลาอย่างน้อย 1 ช่วง"),
 });
@@ -28,7 +32,14 @@ export const mileSchema = z.object({
 export const userSchema = z.object({
   email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง"),
   password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร").optional().or(z.literal("")),
-  role: z.enum(["user", "admin"], { required_error: "กรุณาเลือกสิทธิ์การใช้งาน" }),
+  role: z.enum(["user", "admin"], {
+    errorMap: (issue, ctx) => {
+      if (issue.code === z.ZodIssueCode.invalid_type || issue.code === z.ZodIssueCode.invalid_enum_value) {
+        return { message: "กรุณาเลือกสิทธิ์การใช้งาน" };
+      }
+      return { message: ctx.defaultError };
+    }
+  }),
   department: z.string().min(1, "กรุณากรอกแผนก"),
 });
 
