@@ -176,7 +176,6 @@ export default function EditBookingModal({
             booking_id: booking.id,
             start_mile: Number(editStartMile),
             end_mile: Number(editEndMile),
-            total_mile: Number(editEndMile) - Number(editStartMile),
           },
           { onConflict: "booking_id" }
         );

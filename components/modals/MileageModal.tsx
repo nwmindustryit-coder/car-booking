@@ -67,7 +67,6 @@ export default function MileageModal({
       booking_id: booking.id,
       start_mile: Number(startMile),
       end_mile: Number(endMile),
-      total_mile: Number(endMile) - Number(startMile),
     });
 
     if (error) {
