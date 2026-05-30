@@ -5,7 +5,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+
 import { CarIcon } from "lucide-react";
 
 interface DetailModalProps {
@@ -26,6 +28,9 @@ export default function DetailModal({
           <DialogTitle className="dark:text-white">
             รายละเอียดการจอง
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            ข้อมูลรายละเอียดของการจองรถ
+          </DialogDescription>
         </DialogHeader>
         {booking && (
           <div className="space-y-2 text-sm">

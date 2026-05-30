@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +135,9 @@ export default function SwapCarModal({
               <Badge className="bg-indigo-600 text-xs ml-2">Admin Mode</Badge>
             )}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            เลือกเพื่อสลับรถหรือสลับคิว
+          </DialogDescription>
         </DialogHeader>
 
         {booking && (

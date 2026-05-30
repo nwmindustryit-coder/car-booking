@@ -115,7 +115,8 @@ export default function Navbar() {
               alt="Logo" 
               width={40} 
               height={40} 
-              className="object-contain brightness-0 dark:invert transition-all" 
+              className="object-contain brightness-0 dark:invert transition-all"
+              style={{ width: "auto" }}
               priority
             />
             <span className="font-extrabold text-xl text-slate-800 dark:text-white tracking-tight transition-colors">Nawa<span className="text-blue-600 dark:text-blue-400 font-medium">mit</span></span>
@@ -183,6 +184,7 @@ export default function Navbar() {
               width={32} 
               height={32} 
               className="object-contain brightness-0 dark:invert"
+              style={{ width: "auto" }}
             />
             <span className="font-extrabold text-lg text-slate-800 dark:text-white tracking-tight">Nawamit</span>
           </div>

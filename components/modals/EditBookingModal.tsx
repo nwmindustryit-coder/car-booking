@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useAlert } from "@/components/ui/alert-provider";
 import { bookingSchema } from "@/lib/schemas";
+import { parseISO, format as formatDate } from "date-fns";
 
 const TIME_SLOTS = [
   "ก่อนเวลางาน", "08:00-09:00", "09:01-10:00", "10:01-11:00",
@@ -58,13 +60,13 @@ export default function EditBookingModal({
         driver_name: booking.driver_name,
         destination: booking.destination,
         reason: booking.reason,
-        date: new Date(booking.date),
+        date: parseISO(booking.date),
       });
       setSelectedTimes(
         booking.time_slot.split(",").map((s: string) => s.trim())
       );
       loadMiles();
-      checkBookingAvailability();
+      // No need to call checkBookingAvailability here as the next useEffect will trigger on form.date change
     }
   }, [isOpen, booking]);
 
@@ -88,11 +90,13 @@ export default function EditBookingModal({
   const checkBookingAvailability = async () => {
     if (!booking?.car_id || !form.date) return;
 
+    const formattedDate = formatDate(form.date, "yyyy-MM-dd");
+
     const { data, error } = await supabase
       .from("bookings")
       .select("id, time_slot, driver_name")
       .eq("car_id", booking.car_id)
-      .eq("date", form.date.toISOString().split("T")[0]);
+      .eq("date", formattedDate);
 
     if (error) return;
 
@@ -111,7 +115,7 @@ export default function EditBookingModal({
 
   useEffect(() => {
     if (isOpen) checkBookingAvailability();
-  }, [form.date]);
+  }, [form.date, isOpen, booking?.car_id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +147,7 @@ export default function EditBookingModal({
     }
 
     const newTimeSlotsStr = selectedTimes.join(", ");
+    const formattedDate = formatDate(form.date, "yyyy-MM-dd");
 
     let updateQuery = supabase
       .from("bookings")
@@ -151,7 +156,7 @@ export default function EditBookingModal({
         destination: form.destination,
         reason: form.reason,
         time_slot: newTimeSlotsStr,
-        date: form.date.toLocaleDateString("sv-SE"),
+        date: formattedDate,
       })
       .eq("id", booking.id);
 
@@ -198,7 +203,7 @@ export default function EditBookingModal({
           driver_name: form.driver_name,
           destination: form.destination,
           time_slot: newTimeSlotsStr,
-          date: form.date.toLocaleDateString("sv-SE"),
+          date: formattedDate,
           car_plate: (Array.isArray(booking.cars) ? booking.cars[0]?.plate : booking.cars?.plate) || "",
           reason: form.reason,
           old_driver_name: booking.driver_name,
@@ -216,7 +221,7 @@ export default function EditBookingModal({
           driver_name: form.driver_name,
           destination: form.destination,
           time_slot: newTimeSlotsStr,
-          date: form.date.toLocaleDateString("sv-SE"),
+          date: formattedDate,
           car_plate: (Array.isArray(booking.cars) ? booking.cars[0]?.plate : booking.cars?.plate) || "",
           reason: form.reason,
           old_driver_name: booking.driver_name,
@@ -249,6 +254,9 @@ export default function EditBookingModal({
               </Badge>
             )}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            ฟอร์มสำหรับแก้ไขรายละเอียดการจองรถ
+          </DialogDescription>
         </DialogHeader>
 
         {booking && (

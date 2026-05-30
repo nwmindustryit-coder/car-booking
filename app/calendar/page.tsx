@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   format, 
   addMonths, 
@@ -503,6 +503,9 @@ export default function FleetCalendar() {
               <CalendarDays className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               วันที่ {selectedDateData && format(selectedDateData.date, "d MMMM yyyy", { locale: th })}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              รายการจองทั้งหมดของวันที่ถูกคลิก
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-3 pt-4 custom-scrollbar">
             {selectedDateData?.bookings.map((b, i) => {
@@ -536,6 +539,9 @@ export default function FleetCalendar() {
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-white">
                 <CarFront className="w-6 h-6 text-blue-200" /> รายละเอียดคิวรถ
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                รายละเอียดแบบเต็มของ 1 คิว
+              </DialogDescription>
             </DialogHeader>
           </div>
 

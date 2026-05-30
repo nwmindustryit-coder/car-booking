@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,9 @@ export default function MileageModal({
             <GaugeIcon className="w-5 h-5" />
             บันทึกเลขไมล์
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            กรอกข้อมูลเลขไมล์เริ่มต้นและสิ้นสุด
+          </DialogDescription>
         </DialogHeader>
         {booking && (
           <div className="space-y-4 pt-2">

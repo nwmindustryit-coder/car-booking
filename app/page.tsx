@@ -115,7 +115,7 @@ export default function Dashboard() {
     const { data: cars } = await supabase.from("cars").select("*");
     const { data: todaysBookings } = await supabase
       .from("bookings")
-      .select("car_id, time_slot, driver_name")
+      .select("car_id, time_slot, driver_name, destination, reason")
       .eq("date", today);
 
     // ✨ ดึงข้อมูลการบำรุงรักษา
@@ -825,11 +825,13 @@ export default function Dashboard() {
                       <h3 className="text-xl font-bold text-slate-800 dark:text-white truncate">
                         รถทะเบียน: {myNextTrip.cars?.plate}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px]">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px] shrink-0">
                           {myNextTrip.time_slot.split(",")[0]}
                         </Badge>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">ไป {myNextTrip.destination}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          ไป {myNextTrip.destination} {myNextTrip.reason && `(${myNextTrip.reason})`}
+                        </span>
                       </div>
                       <Button 
                         size="sm" 
@@ -867,7 +869,7 @@ export default function Dashboard() {
                               </h3>
                               <p className="text-blue-600 dark:text-blue-400 font-bold text-sm mt-0.5">
                                 {nextB.time_slot.split(",")[0]} 
-                                <span className="text-slate-400 font-normal ml-2">ไป {nextB.destination}</span>
+                                <span className="text-slate-400 font-normal ml-2">ไป {nextB.destination} {nextB.reason && `(${nextB.reason})`}</span>
                               </p>
                             </>
                           );

@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Trash2, Pencil, Users, UserPlus, Mail, Lock, Briefcase, Shield, Activity, ShieldCheck, User, Sun, Moon, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminUser } from '@/types/index'
@@ -386,6 +386,9 @@ export default function AdminUsers() {
                             <DialogTitle className="flex items-center gap-2 text-xl text-slate-800 dark:text-white">
                                 <Pencil className="w-5 h-5 text-blue-600 dark:text-blue-400" /> แก้ไขข้อมูลผู้ใช้
                             </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                ฟอร์มสำหรับแก้ไขข้อมูลผู้ใช้งาน
+                            </DialogDescription>
                         </DialogHeader>
                         {selectedUser && (
                             <div className="space-y-4">

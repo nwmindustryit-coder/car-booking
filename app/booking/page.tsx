@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { 
   ArrowLeft, CalendarDays, CarFront, User, MapPin, 
-  AlignLeft, CheckCircle2, Clock, CalendarCheck , ChevronDown
+  AlignLeft, CheckCircle2, Clock, CalendarCheck , ChevronDown, Users
 } from "lucide-react";
 
 import { useAlert } from "@/components/ui/alert-provider";
@@ -34,6 +34,11 @@ const TIME_SLOTS = [
 export default function BookingPage() {
   const [cars, setCars] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isBookingForOthers, setIsBookingForOthers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+
   const [date, setDate] = useState<Date | null>(new Date());
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   
@@ -66,6 +71,22 @@ export default function BookingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return router.push("/login");
       setUser(user);
+
+      // ตรวจสอบว่าเป็น Admin หรือไม่
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      const adminStatus = profile?.role?.toLowerCase() === "admin";
+      setIsAdmin(adminStatus);
+
+      if (adminStatus) {
+        const res = await fetch("/api/admin/list-users");
+        const usersData = await res.json();
+        setAllUsers(usersData || []);
+      }
 
       const { data: cars } = await supabase.from("cars").select("*");
       setCars(cars || []);
@@ -145,6 +166,14 @@ export default function BookingPage() {
       });
     }
 
+    if (isBookingForOthers && !selectedUserId) {
+      return showAlert({
+        title: "ข้อมูลไม่ครบ",
+        description: "กรุณาเลือกผู้ใช้งานที่ต้องการจองแทน",
+        type: "warning",
+      });
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -178,9 +207,13 @@ export default function BookingPage() {
       );
       const combinedSlot = sortedTimes.join(", ");
 
+      const targetUser = isBookingForOthers 
+        ? allUsers.find(u => u.id === selectedUserId)
+        : null;
+
       const { error } = await supabase.from("bookings").insert({
-        user_id: user.id,
-        user_name: user.email,
+        user_id: isBookingForOthers ? selectedUserId : user.id,
+        user_name: isBookingForOthers ? targetUser?.email : user.email,
         car_id: form.car_id,
         driver_name: form.driver_name,
         date: formattedDate,
@@ -210,7 +243,7 @@ export default function BookingPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              user_name: user.email,
+              user_name: isBookingForOthers ? targetUser?.email : user.email,
               driver_name: form.driver_name,
               destination: form.destination,
               time_slot: combinedSlot,
@@ -270,6 +303,58 @@ export default function BookingPage() {
           <CardContent className="p-4 sm:p-6 md:p-8 overflow-visible">
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               
+              {/* ฟีเจอร์จองแทน (Admin Only) */}
+              {isAdmin && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-bold text-blue-800 dark:text-blue-200">จองแทนผู้อื่น</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={isBookingForOthers}
+                        onChange={(e) => {
+                          setIsBookingForOthers(e.target.checked);
+                          if (!e.target.checked) setSelectedUserId("");
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  {isBookingForOthers && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="text-xs font-semibold text-blue-700 dark:text-blue-300">เลือกผู้ใช้งานที่ต้องการเป็นเจ้าของรายการนี้</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <User className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <select
+                          className="w-full pl-9 pr-10 h-10 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-slate-700 dark:text-white"
+                          value={selectedUserId}
+                          onChange={(e) => setSelectedUserId(e.target.value)}
+                        >
+                          <option value="">-- ค้นหา/เลือกผู้ใช้งาน --</option>
+                          {allUsers
+                            .sort((a, b) => a.email.localeCompare(b.email))
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.email} {u.department ? `(${u.department})` : ""}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      <p className="text-[10px] text-blue-500 dark:text-blue-400 italic">
+                        * เมื่อจองสำเร็จ ผู้ใช้ที่ถูกเลือกจะสามารถเห็นและแก้ไขรายการนี้ได้เอง
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Row 1: วันที่ & เลือกรถ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 
