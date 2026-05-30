@@ -8,7 +8,7 @@ import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { getHoliday } from "@/lib/holidays";
+import { getHolidaysFromDB, checkIsHoliday, Holiday } from "@/lib/holidays";
 import ExcelJS from "exceljs";
 import {
   FileSpreadsheet,
@@ -55,6 +55,7 @@ export default function ReportsPage() {
   const [end, setEnd] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const [holidayList, setHolidayList] = useState<Holiday[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // 🌙 State สำหรับ Dark Mode
@@ -150,6 +151,10 @@ export default function ReportsPage() {
     setError(null);
     setLoading(true);
     try {
+      // ดึงข้อมูลวันหยุด
+      const hData = await getHolidaysFromDB();
+      setHolidayList(hData);
+
       let from = toYYYYMMDD(start);
       let to = toYYYYMMDD(end);
 
@@ -607,7 +612,7 @@ export default function ReportsPage() {
                   onChange={(d: Date | null) => d && setMonth(d)}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
-                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
+                  dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                   className="w-[160px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                 />
               ) : (
@@ -616,7 +621,7 @@ export default function ReportsPage() {
                     selected={start}
                     onChange={(d: Date | null) => d && setStart(d)}
                     dateFormat="dd/MM/yyyy"
-                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
+                  dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                     className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                   <span className="text-slate-400 font-medium">-</span>
@@ -624,7 +629,7 @@ export default function ReportsPage() {
                     selected={end}
                     onChange={(d: Date | null) => d && setEnd(d)}
                     dateFormat="dd/MM/yyyy"
-                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
+                  dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                     className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                 </div>

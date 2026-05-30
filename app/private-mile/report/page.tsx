@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { Printer, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { getHoliday } from "@/lib/holidays";
+import { getHolidaysFromDB, checkIsHoliday, Holiday } from "@/lib/holidays";
 
 const RATE_PER_KM = 5;
 const ADMIN_EMAILS = ["theeraphat@nawamit.com"];
@@ -46,6 +46,7 @@ export default function PrivateMileageReportPage() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [holidayList, setHolidayList] = useState<Holiday[]>([]);
   const router = useRouter();
 
   const isAdmin = useMemo(
@@ -66,6 +67,10 @@ export default function PrivateMileageReportPage() {
         email: userData.user.email ?? undefined,
       };
       setUser(u);
+
+      // ดึงข้อมูลวันหยุด
+      const hData = await getHolidaysFromDB();
+      setHolidayList(hData);
 
       let query = supabase
         .from("mileages")
@@ -202,7 +207,7 @@ export default function PrivateMileageReportPage() {
                       selected={startDate}
                       onChange={(date: Date | null) => setStartDate(date)}
                       dateFormat="dd/MM/yyyy"
-                      dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
+                      dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                       className="border px-2 py-1 rounded-md text-sm"
                       placeholderText="วันเริ่มต้น"
                     />
@@ -211,7 +216,7 @@ export default function PrivateMileageReportPage() {
                       selected={endDate}
                       onChange={(date: Date | null) => setEndDate(date)}
                       dateFormat="dd/MM/yyyy"
-                      dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
+                      dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                       className="border px-2 py-1 rounded-md text-sm"
                       placeholderText="วันสิ้นสุด"
                     />
