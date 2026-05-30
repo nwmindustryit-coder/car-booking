@@ -8,6 +8,7 @@ import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { getHoliday } from "@/lib/holidays";
 import ExcelJS from "exceljs";
 import {
   FileSpreadsheet,
@@ -591,12 +592,22 @@ export default function ReportsPage() {
 
             {/* Date Pickers */}
             <div className="flex-1 sm:flex-none flex items-center gap-2 px-2">
+              <style>{`
+                .holiday-day {
+                  color: #ef4444 !important;
+                  font-weight: bold !important;
+                }
+                .dark .holiday-day {
+                  color: #f87171 !important;
+                }
+              `}</style>
               {mode === "month" ? (
                 <DatePicker
                   selected={month}
                   onChange={(d: Date | null) => d && setMonth(d)}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
+                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
                   className="w-[160px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                 />
               ) : (
@@ -605,6 +616,7 @@ export default function ReportsPage() {
                     selected={start}
                     onChange={(d: Date | null) => d && setStart(d)}
                     dateFormat="dd/MM/yyyy"
+                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
                     className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                   <span className="text-slate-400 font-medium">-</span>
@@ -612,6 +624,7 @@ export default function ReportsPage() {
                     selected={end}
                     onChange={(d: Date | null) => d && setEnd(d)}
                     dateFormat="dd/MM/yyyy"
+                  dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
                     className="w-[120px] h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-center transition-colors"
                   />
                 </div>

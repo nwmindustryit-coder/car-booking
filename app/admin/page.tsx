@@ -17,7 +17,8 @@ import {
   Sun,
   Moon,
   Rocket,
-  Lightbulb
+  Lightbulb,
+  CalendarDays
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -103,6 +104,14 @@ export default function AdminPage() {
       href: "/admin/car-maintenance",
       color: "from-orange-50 to-white dark:from-orange-900/20 dark:to-slate-800",
       borderColor: "hover:border-orange-200 dark:hover:border-orange-500/50"
+    },
+    {
+      title: "จัดการวันหยุด",
+      description: "กำหนดวันหยุดนักขัตฤกษ์เพื่อแสดงในปฏิทิน",
+      icon: <CalendarDays className="w-8 h-8 text-pink-600 dark:text-pink-400" />,
+      href: "/admin/holidays",
+      color: "from-pink-50 to-white dark:from-pink-900/20 dark:to-slate-800",
+      borderColor: "hover:border-pink-200 dark:hover:border-pink-500/50"
     },
   ];
 

@@ -19,6 +19,7 @@ import {
   isToday
 } from "date-fns";
 import { th } from "date-fns/locale";
+import { getHolidaysFromDB, checkIsHoliday, Holiday } from "@/lib/holidays";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -112,6 +113,7 @@ export default function FleetCalendar() {
   // ✨ State สำหรับ Modal
   const [selectedDateData, setSelectedDateData] = useState<{ date: Date, bookings: any[] } | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [holidayList, setHolidayList] = useState<Holiday[]>([]);
 
   // 🚀 โหลด Dark Mode
   useEffect(() => {
@@ -149,9 +151,10 @@ export default function FleetCalendar() {
         const start = format(startOfWeek(startOfMonth(currentMonth)), "yyyy-MM-dd");
         const end = format(endOfWeek(endOfMonth(currentMonth)), "yyyy-MM-dd");
 
-        const [carsRes, bookingsRes] = await Promise.all([
+        const [carsRes, bookingsRes, holidaysData] = await Promise.all([
           supabase.from("cars").select("id, plate, brand").order("id"),
-          supabase.from("bookings").select("*").gte("date", start).lte("date", end)
+          supabase.from("bookings").select("*").gte("date", start).lte("date", end),
+          getHolidaysFromDB()
         ]);
 
         if (carsRes.error) throw carsRes.error;
@@ -159,6 +162,7 @@ export default function FleetCalendar() {
 
         if (isMounted) {
           setCars(carsRes.data || []);
+          setHolidayList(holidaysData || []);
           
           const mergedBookings = (bookingsRes.data || []).map((b: any) => {
              const carDetails = (carsRes.data || []).find((c: any) => c.id === b.car_id);
@@ -377,6 +381,7 @@ export default function FleetCalendar() {
               const isSun = day.getDay() === 0;
               const isSat = day.getDay() === 6;
               const dayBookings = filteredBookings.filter(b => isSameDay(new Date(b.date), day));
+              const holiday = checkIsHoliday(day, holidayList);
 
               return (
                 <div
@@ -390,7 +395,7 @@ export default function FleetCalendar() {
                         ? 'bg-blue-50/60 dark:bg-blue-900/20 border-slate-100 dark:border-slate-700/50 shadow-[inset_0_0_0_2px_#3b82f6] dark:shadow-[inset_0_0_0_2px_#3b82f6] z-10' 
                         : !inMonth 
                           ? 'border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/20' 
-                          : (isSun || isSat) 
+                          : (isSun || isSat || holiday) 
                             ? 'border-slate-100 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-900/40' 
                             : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800'
                     }
@@ -405,7 +410,7 @@ export default function FleetCalendar() {
                           ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-500/20 dark:ring-blue-500/30 scale-110' 
                           : !inMonth 
                             ? 'text-slate-300 dark:text-slate-600' 
-                            : isSun 
+                            : (isSun || holiday) 
                               ? 'text-red-500 dark:text-red-400' 
                               : isSat 
                                 ? 'text-blue-600 dark:text-blue-400' 
@@ -415,7 +420,13 @@ export default function FleetCalendar() {
                       {format(day, "d")}
                     </span>
 
-                    {isTodayDate && (
+                    {holiday && (
+                      <span className="hidden sm:inline-block text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded-md truncate max-w-[70%] mt-1">
+                        {holiday.name}
+                      </span>
+                    )}
+
+                    {isTodayDate && !holiday && (
                       <span className="hidden sm:inline-block text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded-md animate-pulse mt-1">
                         วันนี้
                       </span>

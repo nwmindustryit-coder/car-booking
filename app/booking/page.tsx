@@ -17,6 +17,7 @@ import {
 
 import { useAlert } from "@/components/ui/alert-provider";
 import { bookingSchema } from "@/lib/schemas";
+import { getHolidaysFromDB, checkIsHoliday, Holiday } from "@/lib/holidays";
 
 const TIME_SLOTS = [
   "ก่อนเวลางาน",
@@ -36,6 +37,7 @@ export default function BookingPage() {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [holidayList, setHolidayList] = useState<Holiday[]>([]);
   const [isBookingForOthers, setIsBookingForOthers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
 
@@ -81,6 +83,10 @@ export default function BookingPage() {
       
       const adminStatus = profile?.role?.toLowerCase() === "admin";
       setIsAdmin(adminStatus);
+
+      // ดึงข้อมูลวันหยุด
+      const holidaysData = await getHolidaysFromDB();
+      setHolidayList(holidaysData);
 
       if (adminStatus) {
         const res = await fetch("/api/admin/list-users");
@@ -364,12 +370,22 @@ export default function BookingPage() {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                       <CalendarDays className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                     </div>
+                    <style>{`
+                      .holiday-day {
+                        color: #ef4444 !important;
+                        font-weight: bold !important;
+                      }
+                      .dark .holiday-day {
+                        color: #f87171 !important;
+                      }
+                    `}</style>
                     <DatePicker
                       selected={date}
                       onChange={setDate}
                       wrapperClassName="w-full" 
                       className="w-full pl-10 pr-4 h-12 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-700 dark:text-white font-medium relative z-20"
                       dateFormat="dd/MM/yyyy"
+                      dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                     />
                   </div>
                 </div>

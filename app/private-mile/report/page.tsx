@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Printer, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { getHoliday } from "@/lib/holidays";
 
 const RATE_PER_KM = 5;
 const ADMIN_EMAILS = ["theeraphat@nawamit.com"];
@@ -181,6 +182,15 @@ export default function PrivateMileageReportPage() {
 
             {/* กล่องฟิลเตอร์ */}
             <div className="border p-4 rounded-lg bg-white shadow-sm">
+              <style>{`
+                .holiday-day {
+                  color: #ef4444 !important;
+                  font-weight: bold !important;
+                }
+                .dark .holiday-day {
+                  color: #f87171 !important;
+                }
+              `}</style>
               <div className="space-y-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" checked={filterType === "range"} onChange={() => setFilterType("range")} />
@@ -192,6 +202,7 @@ export default function PrivateMileageReportPage() {
                       selected={startDate}
                       onChange={(date: Date | null) => setStartDate(date)}
                       dateFormat="dd/MM/yyyy"
+                      dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
                       className="border px-2 py-1 rounded-md text-sm"
                       placeholderText="วันเริ่มต้น"
                     />
@@ -200,6 +211,7 @@ export default function PrivateMileageReportPage() {
                       selected={endDate}
                       onChange={(date: Date | null) => setEndDate(date)}
                       dateFormat="dd/MM/yyyy"
+                      dayClassName={(d) => getHoliday(d) ? "holiday-day" : ""}
                       className="border px-2 py-1 rounded-md text-sm"
                       placeholderText="วันสิ้นสุด"
                     />

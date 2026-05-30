@@ -18,6 +18,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useAlert } from "@/components/ui/alert-provider";
 import { bookingSchema } from "@/lib/schemas";
 import { parseISO, format as formatDate } from "date-fns";
+import { getHolidaysFromDB, checkIsHoliday, Holiday } from "@/lib/holidays";
 
 const TIME_SLOTS = [
   "ก่อนเวลางาน", "08:00-09:00", "09:01-10:00", "10:01-11:00",
@@ -52,10 +53,14 @@ export default function EditBookingModal({
   const [editStartMile, setEditStartMile] = useState("");
   const [editEndMile, setEditEndMile] = useState("");
   const [bookingStatus, setBookingStatus] = useState<Record<string, string>>({});
+  const [holidayList, setHolidayList] = useState<Holiday[]>([]);
   const { showAlert } = useAlert();
 
   useEffect(() => {
     if (isOpen && booking) {
+      // ดึงข้อมูลวันหยุด
+      getHolidaysFromDB().then(setHolidayList);
+
       setForm({
         driver_name: booking.driver_name,
         destination: booking.destination,
@@ -329,12 +334,22 @@ export default function EditBookingModal({
               <label className="block text-sm font-medium dark:text-slate-300">
                 วันที่
               </label>
+              <style>{`
+                .holiday-day {
+                  color: #ef4444 !important;
+                  font-weight: bold !important;
+                }
+                .dark .holiday-day {
+                  color: #f87171 !important;
+                }
+              `}</style>
               <DatePicker
                 selected={form.date}
                 onChange={(d: Date | null) =>
                   d && setForm({ ...form, date: d })
                 }
                 dateFormat="dd/MM/yyyy"
+                dayClassName={(d) => checkIsHoliday(d, holidayList) ? "holiday-day" : ""}
                 className="border border-slate-200 dark:border-slate-600 rounded-md p-2 w-full bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
