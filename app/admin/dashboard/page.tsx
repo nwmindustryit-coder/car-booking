@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Moon, Sun } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 import { DashboardRow } from "@/types/index";
 
@@ -267,31 +268,25 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="flex flex-col items-center justify-center h-screen text-blue-600 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-        <svg
-          className="animate-spin h-10 w-10 mb-4 text-blue-500 dark:text-blue-400"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-        <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">
-          กำลังประมวลผล Dashboard...
-        </p>
-      </main>
+      <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-12 transition-colors duration-300">
+        <Navbar />
+        <main className="max-w-7xl mx-auto p-4 sm:p-6 mt-4">
+          <div className="flex justify-between items-center mb-8">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-24 w-full rounded-2xl mb-8" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-80 rounded-2xl w-full" />
+            <Skeleton className="h-80 rounded-2xl w-full" />
+          </div>
+        </main>
+      </div>
     );
   }
 

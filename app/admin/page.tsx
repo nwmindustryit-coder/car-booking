@@ -18,7 +18,8 @@ import {
   Moon,
   Rocket,
   Lightbulb,
-  CalendarDays
+  CalendarDays,
+  BarChart3
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -112,6 +113,14 @@ export default function AdminPage() {
       href: "/admin/holidays",
       color: "from-pink-50 to-white dark:from-pink-900/20 dark:to-slate-800",
       borderColor: "hover:border-pink-200 dark:hover:border-pink-500/50"
+    },
+    {
+      title: "วิเคราะห์การใช้งาน",
+      description: "ดูสถิติ กราฟ และแนวโน้มการใช้รถทั้งหมด",
+      icon: <BarChart3 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+      href: "/admin/analytics",
+      color: "from-indigo-50 to-white dark:from-indigo-900/20 dark:to-slate-800",
+      borderColor: "hover:border-indigo-200 dark:hover:border-indigo-500/50"
     },
   ];
 
