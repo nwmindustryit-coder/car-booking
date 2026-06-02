@@ -146,7 +146,10 @@ export default function Dashboard() {
         // ✨ ค้นหาคิวถัดไปของรถคันนี้
         const nextCarBooking = todaysBookings
           ?.filter((b) => b.car_id === car.id)
-          .map((b) => ({ ...b, firstSlotIndex: TIME_SLOTS.indexOf(b.time_slot.split(",")[0].trim()) }))
+          .map((b) => {
+            const slotIndexes = b.time_slot.split(",").map(s => TIME_SLOTS.indexOf(s.trim())).filter(i => i !== -1);
+            return { ...b, firstSlotIndex: slotIndexes.length > 0 ? Math.min(...slotIndexes) : -1 };
+          })
           .filter((b) => b.firstSlotIndex > currentSlotIndex)
           .sort((a, b) => a.firstSlotIndex - b.firstSlotIndex)[0];
 
@@ -855,7 +858,7 @@ export default function Dashboard() {
                       </h3>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px] shrink-0">
-                          {myNextTrip.time_slot.split(",")[0]}
+                          {mergeTimeSlots(myNextTrip.time_slot)}
                         </Badge>
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           ไป {myNextTrip.destination} {myNextTrip.reason && `(${myNextTrip.reason})`}
@@ -896,7 +899,7 @@ export default function Dashboard() {
                                 {nextB.driver_name} <span className="text-sm font-normal text-slate-500 ml-1">({nextB.carPlate})</span>
                               </h3>
                               <p className="text-blue-600 dark:text-blue-400 font-bold text-sm mt-0.5">
-                                {nextB.time_slot.split(",")[0]} 
+                                {mergeTimeSlots(nextB.time_slot)} 
                                 <span className="text-slate-400 font-normal ml-2">ไป {nextB.destination} {nextB.reason && `(${nextB.reason})`}</span>
                               </p>
                             </>
